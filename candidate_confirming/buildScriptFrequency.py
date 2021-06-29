@@ -2,13 +2,13 @@
 #It performs the peasoup-prepfold epoch correction on frequencies.
 import glob
 #Collect the save files.
-save_files=glob.glob("*/*miquel_save.csv")
+save_files=sorted(glob.glob("*/*miquel_save.csv"))
 #Open the file where the folding script will be written.
 write_file=open("refold.sh","w")
 #Write a header line onto it.
 write_file.write("#!/bin/bash\n")
 #Collect the candidates files.
-candidates_collection=glob.glob("*/candidates.csv")
+candidates_collection=sorted(glob.glob("*/candidates.csv"))
 j=0
 for name in save_files:
 	print(name,candidates_collection[j])
@@ -47,7 +47,7 @@ for name in save_files:
 						write_file.write("	echo '"+name_mask+"_rfifind.mask exists'\n")
 						write_file.write("else\n")
 						write_file.write("	ln -s "+files+" .\n")
-						rfi_command="	rfifind -ncpus 8 -time 5 -timesig 5 -freqsig 7 -o "+name_mask+" *.fil"
+						rfi_command="	rfifind -ncpus 8 -time 5 -freqsig 6 -o "+name_mask+" *.fil"
 						#Write the rfifind command.
 						write_file.write(rfi_command+"\n")
 						write_file.write("	rm *.fil\n")

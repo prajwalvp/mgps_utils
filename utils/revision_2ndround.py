@@ -7,6 +7,8 @@ write_file=open("compress_2ndround.sh","w")
 write_file.write("#!/bin/bash\n")
 write_file.write("rm -r 2ndround\n")
 write_file.write("mkdir 2ndround\n")
+write_file.write("mkdir 2ndround/metafiles\n")
+write_file.write("mkdir 2ndround/plots\n")
 
 write_file.write("\n")
 j=0
@@ -25,24 +27,21 @@ for name in save_files:
 					if line_vector[1]==candidate_vector[29]:
 						pointing=candidate_vector[3]
 
-						write_file.write("mkdir 2ndround/"+pointing+"\n")
-						write_file.write("mkdir 2ndround/"+pointing+"/metafiles\n")
-						write_file.write("mkdir 2ndround/"+pointing+"/plots\n")
-						write_file.write("cp "+pointing+"/metafiles/*.meta 2ndround/"+pointing+"/metafiles/\n")
-						write_file.write("cp "+pointing+"/"+line_vector[1]+" 2ndround/"+pointing+"/"+line_vector[1]+"\n")
+						write_file.write("cp "+pointing+"/metafiles/*.meta 2ndround/metafiles\n")
+						write_file.write("cp "+pointing+"/"+line_vector[1]+" 2ndround/"+line_vector[1]+"\n")
 
-						write_file.write("if test -f 2ndround/"+pointing+"/candidates.csv; then\n")
-						write_file.write("	echo '"+candidate.split("\n")[0]+"' >> 2ndround/"+pointing+"/candidates.csv\n")
+						write_file.write("if test -f 2ndround/candidates.csv; then\n")
+						write_file.write("	echo '"+candidate.split("\n")[0]+"' >> 2ndround/candidates.csv\n")
 						write_file.write("else\n")
 						write_file.write("	echo 'pointing_id,beam_id,beam_name,source_name,ra,dec,gl,gb,mjd_start,utc_start,f0_user,f0_opt,f0_opt_err,f1_user,f1_opt,f1_opt_err,acc_user,acc_opt,acc_opt_err,dm_user,dm_opt,dm_opt_err,sn_fft,sn_fold,pepoch,maxdm_ymw16,dist_ymw16,pics_trapum_ter5,pics_palfa,png_path,metafile_path,filterbank_path,candidate_tarball_path' > 2ndround/"+pointing+"/candidates.csv\n")
-						write_file.write("	echo '"+candidate.split("\n")[0]+"' >> 2ndround/"+pointing+"/candidates.csv\n")
+						write_file.write("	echo '"+candidate.split("\n")[0]+"' >> 2ndround/candidates.csv\n")
 						write_file.write("fi\n")
 
-						write_file.write("if test -f 2ndround/"+pointing+"/"+pointing+"_save.csv; then\n")
-						write_file.write("	echo '"+line.split("\n")[0]+"' >> 2ndround/"+pointing+"/"+pointing+"_save.csv\n")
+						write_file.write("if test -f 2ndround/save.csv; then\n")
+						write_file.write("	echo '"+line.split("\n")[0]+"' >> 2ndround/save.csv\n")
 						write_file.write("else\n")
-						write_file.write("	echo 'utc,png,classification' > 2ndround/"+pointing+"/"+pointing+"_save.csv\n")
-						write_file.write("	echo '"+line.split("\n")[0]+"' >> 2ndround/"+pointing+"/"+pointing+"_save.csv\n")
+						write_file.write("	echo 'utc,png,classification' > 2ndround/_save.csv\n")
+						write_file.write("	echo '"+line.split("\n")[0]+"' >> 2ndround/_save.csv\n")
 						write_file.write("fi\n")
 						write_file.write("\n")
 				candidates.seek(0,0)

@@ -2,21 +2,19 @@
 #In addition of searching for PSRCAT hits, it also looks for FermiLAT candidates.
 #It requires that the direcotry with table 4FGL_DR2_Ppsr.fits is specifyied in line 92.
 
+import re
 import glob
-from astropy import wcs
-import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse,Circle
-import re
-import astropy.units as u
-import re
-from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-from astropy.coordinates import ICRS, Galactic
-from astropy.io import fits
-from ast import literal_eval
-from psrqpy import QueryATNF
 import sys
 import numpy as np
+from astropy import wcs
+import astropy.units as u
+from astropy.io import fits
+from astropy.time import Time
+from astropy.coordinates import ICRS, Galactic, SkyCoord, EarthLocation, AltAz
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse,Circle
+from ast import literal_eval
+from psrqpy import QueryATNF
 #from astropy.utils.iers import conf
 #conf.auto_max_age = None
 
@@ -199,6 +197,8 @@ def get_tiling_plot(meta):
     #ax.set_ylim(-44.35,-44.25)
     plt.legend(prop={"size":6})
     plt.show()
+
+
 
 files=glob.glob(sys.argv[1])
 for file in files:

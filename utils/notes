@@ -1,0 +1,7 @@
+1. Clean up beamplots code 
+    a) Add Fermi utility 
+    b) Integrate webparser with beamplot
+    c) Check for known pulsars within survey beam and specify best beam  
+2. Add neighbouring beams automatically (?)
+3. Clean up other utilites
+4.  

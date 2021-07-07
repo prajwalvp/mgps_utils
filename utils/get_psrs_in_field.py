@@ -97,19 +97,17 @@ def extract_psrs_from_html(soup):
        # Initialise pandas dataframe
        columns = ['PSR', 'RA (deg)', 'DEC (deg)', 'P (ms)', 'DM (pc cm^-3)', 'Survey', 'Separation (deg)']
        psr_df = pd.DataFrame(columns=columns)        
-
-
        all_psr_info = soup.find_all('span')[-2].find("tbody").findAll("tr")
         
        # Generate Pandas Dataframe
        for i,psr in enumerate(all_psr_info):
            psr_df.loc[i] = [psr.findAll("td")[0].text, 
-                           psr.findAll("td")[1].text, 
-                           psr.findAll("td")[2].text,
-                           psr.findAll("td")[3].text,
-                           psr.findAll("td")[4].text,
-                           psr.findAll("td")[5].text,
-                           psr.findAll("td")[7].text]
+                            psr.findAll("td")[1].text, 
+                            psr.findAll("td")[2].text,
+                            psr.findAll("td")[3].text,
+                            psr.findAll("td")[4].text,
+                            psr.findAll("td")[5].text,
+                            psr.findAll("td")[7].text]
                                  
        return psr_df 
 
@@ -117,10 +115,10 @@ if __name__== "__main__":
 
     # Set options
     parser = optparse.OptionParser()
-    parser.add_option('--search_coordinates', type=str, help='Reference coordinates', dest="coords",default="13:06 -60:43")
+    parser.add_option('--search_coordinates', type=str, help='Reference coordinates', dest="coords",default="12:08 -59:36")
     parser.add_option('--search_radius',type=str,help='Radius in deg. around coordinates to look for psrs',dest="radius",default="5.0") # IB at L-Band
-    parser.add_option('--search_dm',type=str,help='Reference DM to search in pc cm^-3',dest='dm',default="400.0")
-    parser.add_option('--search_dm_tolerance',type=str,help='search DM tolerance in pc cm^-3',dest="dm_tol",default="100.0")
+    parser.add_option('--search_dm',type=str,help='Reference DM to search in pc cm^-3',dest='dm',default="")
+    parser.add_option('--search_dm_tolerance',type=str,help='search DM tolerance in pc cm^-3',dest="dm_tol",default="10.0")
     opts,args = parser.parse_args() 
 
 

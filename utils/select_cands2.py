@@ -6,11 +6,10 @@ import optparse
 import pandas as pd
 
 
-def write_t1_t2_beams(opts):
+def write_t1_t2_pulsar_beams(opts):
     """
     Write out T1, T2 beams 
     """ 
-
     columns = ['filterbank_path','beam_name']
 
     classified_files =  glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag))    
@@ -26,6 +25,7 @@ def write_t1_t2_beams(opts):
         if t1_t2_df.empty:
             continue         
         else:
+             
             # Put condition to retrieve beam path and beam name for given dataframe
 
 

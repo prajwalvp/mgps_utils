@@ -109,7 +109,9 @@ def write_out_second_revision_tar_file(opts):
     # Make all necessary directories
     second_round_path = opts.output_dir + '/{}_{}_round1'.format(os.path.basename(opts.main_dir),opts.tag)
     try:
-        os.makedirs(second_round_path)
+        os.makedirs(second_round_path+'/plots')
+        os.makedirs(second_round_path+'/metafiles')
+        
     except FileExistsError:       
         shutil.rmtree(second_round_path)
         os.makedirs(second_round_path+'/plots') 

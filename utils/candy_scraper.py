@@ -28,7 +28,7 @@ def write_t1_t2_beams(opts):
     columns = ['filterbank_path','beam_name']
     t1_t2_all = pd.DataFrame(columns=columns)
 
-    classified_files =  glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag))    
+    classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
     all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
 
     if len(classified_files) != len(all_candidate_csvs):
@@ -60,7 +60,7 @@ def write_known_pulsar_beams(opts):
     columns = ['filterbank_path','beam_name']
     kp_all = pd.DataFrame(columns=columns)
 
-    classified_files =  glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag))    
+    classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
     all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
 
     if len(classified_files) != len(all_candidate_csvs):
@@ -118,7 +118,7 @@ def write_out_second_revision_tar_file(opts):
         os.makedirs(second_round_path+'/metafiles') 
 
     # Transfer all necessary  T1/T2 plots + metafiles
-    classified_files =  glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag))
+    classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
     all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir)) 
 
     if len(classified_files) != len(all_candidate_csvs):

@@ -35,6 +35,7 @@ def copy_tarballs(user, localpath, basepath, tarballs):
         sftp.get(os.path.join(basepath, tarball),
             os.path.join(localpath, tarball),
             callback=progress)
+    print("\nCopy complete")
     sftp.close()
     ssh.close()
 

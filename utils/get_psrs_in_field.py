@@ -116,7 +116,7 @@ if __name__== "__main__":
     # Set options
     parser = optparse.OptionParser()
     parser.add_option('--search_coordinates', type=str, help='Reference coordinates', dest="coords",default="12:08 -59:36")
-    parser.add_option('--search_radius',type=str,help='Radius in deg. around coordinates to look for psrs',dest="radius",default="5.0") # IB at L-Band
+    parser.add_option('--search_radius',type=str,help='Radius in deg. around coordinates to look for psrs',dest="radius",default="1.2") # IB at L-Band
     parser.add_option('--search_dm',type=str,help='Reference DM to search in pc cm^-3',dest='dm',default="")
     parser.add_option('--search_dm_tolerance',type=str,help='search DM tolerance in pc cm^-3',dest="dm_tol",default="10.0")
     opts,args = parser.parse_args() 

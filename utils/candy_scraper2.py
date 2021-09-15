@@ -12,15 +12,6 @@ import pandas as pd
 Updated version of candy_scraper.py which writes out beam lists to keep with the columns beam_id, user_id, reason_to_keep_notes
 """
 
-# User ID dictionary of candidate viewers as registered in the TRAPUM DB- Can be modified
-user_dict={"Ewan": 1,
-           "Prajwal": 2,
-           "Vivek": 3, 
-           "Marina": 45,
-           "Shalini": 50,
-           "Miquel": 51,
-           "Gregory": 56}
-
 
 log = logging.getLogger('candy_scraper2')
 FORMAT = "[%(levelname)s - %(asctime)s - %(filename)s:%(lineno)s] %(message)s"
@@ -37,7 +28,7 @@ def write_t1_t2_beams(opts):
     """
     Write out T1, T2 beams 
     """ 
-    columns = ['beam_id','user_id','reason','notes']
+    columns = ['filterbank_path','username','reason']
     t1_t2_all = pd.DataFrame(columns=columns)
 
     classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
@@ -56,10 +47,14 @@ def write_t1_t2_beams(opts):
             continue         
         else:
             candidate_meta_df = pd.read_csv(all_candidate_csvs[i])
-            t1_t2_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_t2_df['png'])][['beam_id']]
-            t1_t2_beams_df = t1_t2_beams_df.assign(user_id=opts.user_id)
+            t1_t2_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_t2_df['png'])][['filterbank_path']]
+            t1_t2_beams_df['filterbank_path'] = t1_t2_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
+            
+            t1_t2_beams_df = t1_t2_beams_df.assign(username = opts.username)
+            
             t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])]['classification']
-            t1_t2_beams_df = t1_t2_beams_df.assign(notes='candidate') 
+            t1_t2_beams_df['reason'] = opts.survey_name + ' ' + t1_t2_beams_df['reason'].astype(str) 
+
             log.info("Number of T1/T2 cands found: {}".format(t1_t2_beams_df.shape[0]))
             t1_t2_all = t1_t2_all.append(t1_t2_beams_df, ignore_index=True)
 
@@ -70,7 +65,7 @@ def write_known_pulsar_beams(opts):
     """
     Write out known pulsar beams 
     """ 
-    columns = ['beam_id','user_id','reason','notes']
+    columns = ['filterbank_path','username','reason']
     kp_all = pd.DataFrame(columns=columns)
 
     classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
@@ -89,10 +84,14 @@ def write_known_pulsar_beams(opts):
             continue         
         else:
             candidate_meta_df = pd.read_csv(all_candidate_csvs[i])
-            kp_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(kp_df['png'])][['beam_id']]
-            kp_beams_df = kp_beams_df.assign(user_id=opts.user_id)
+            kp_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(kp_df['png'])][['filterbank_path']]
+            kp_beams_df['filterbank_path'] = kp_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
+
+            kp_beams_df = kp_beams_df.assign(username=opts.username)
+            
             kp_beams_df['reason'] = kp_df[kp_df['png'].isin(candidate_meta_df['png_path'])]['classification']
-            kp_beams_df = kp_beams_df.assign(notes='known pulsar') 
+            kp_beams_df['reason'] = opts.survey_name + ' ' + kp_beams_df['reason'].astype(str) 
+
             log.info("Number of known pulsar cands found: {}".format(kp_beams_df.shape[0]))
             kp_all = kp_all.append(kp_beams_df, ignore_index=True)
 
@@ -179,7 +178,8 @@ if __name__ == "__main__":
     # Select options
     parser = optparse.OptionParser()
     parser.add_option('--name_tag', type=str, help = 'Name tag for searching classified files', dest='tag', default='autosave')
-    parser.add_option('--user_id', type=int, help = 'Unique User ID number corresponding to the DB', dest='user_id')
+    parser.add_option('--username', type=str, help = 'MGPS/TRAPUM login username', dest='username')
+    parser.add_option('--survey_name', type=str, help = 'Survey name', dest='survey_name',default='MGPS-L')
     parser.add_option('--main_dir', type=str, help='Root directory where all pointing subdirectories are stored', dest='main_dir')
     parser.add_option('--output_dir',type=str, help='Output directory where csvs/tar files will be written out', dest='output_dir')
     parser.add_option('--separate_csvs',type=int, help='Flag for writing out separate csvs for T1/T2 and pulsars', dest='sep_csv',default=0)

@@ -9,7 +9,7 @@ import logging
 import pandas as pd
 
 """
-Updated version of candy_scraper.py which writes out beam lists to keep with the columns beam_id, user_id, reason_to_keep_notes
+Updated version of candy_scraper.py which writes out beam lists with columns: filterbank_path, username, reason
 """
 
 
@@ -52,7 +52,7 @@ def write_t1_t2_beams(opts):
             
             t1_t2_beams_df = t1_t2_beams_df.assign(username = opts.username)
             
-            t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])]['classification']
+            t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])][['classification']]
             t1_t2_beams_df['reason'] = opts.survey_name + ' ' + t1_t2_beams_df['reason'].astype(str) 
 
             log.info("Number of T1/T2 cands found: {}".format(t1_t2_beams_df.shape[0]))
@@ -77,7 +77,7 @@ def write_known_pulsar_beams(opts):
     for i,classified_file in enumerate(classified_files):
         log.info('Checking {}'.format(os.path.dirname(classified_file)))
         df = pd.read_csv(classified_file)
-        kp_df =  df[df['classification']=='KNOWN_PSR']
+        kp_df =  df[df['classification']=='KNOWN_PSR'].drop_duplicates()
         
         if kp_df.empty:
             log.info('No known pulsar files in {}'.format(os.path.dirname(classified_file)))
@@ -89,7 +89,7 @@ def write_known_pulsar_beams(opts):
 
             kp_beams_df = kp_beams_df.assign(username=opts.username)
             
-            kp_beams_df['reason'] = kp_df[kp_df['png'].isin(candidate_meta_df['png_path'])]['classification']
+            kp_beams_df['reason'] = kp_df[kp_df['png'].isin(candidate_meta_df['png_path'])]['classification'].to_list()
             kp_beams_df['reason'] = opts.survey_name + ' ' + kp_beams_df['reason'].astype(str) 
 
             log.info("Number of known pulsar cands found: {}".format(kp_beams_df.shape[0]))

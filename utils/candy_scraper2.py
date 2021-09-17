@@ -52,7 +52,7 @@ def write_t1_t2_beams(opts):
             
             t1_t2_beams_df = t1_t2_beams_df.assign(username = opts.username)
             
-            t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])][['classification']]
+            t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])]['classification'].to_list()
             t1_t2_beams_df['reason'] = opts.survey_name + ' ' + t1_t2_beams_df['reason'].astype(str) 
 
             log.info("Number of T1/T2 cands found: {}".format(t1_t2_beams_df.shape[0]))

@@ -1,32 +1,31 @@
+#Modified version of Prajwalp's pointing_pattern.py that includes both the survey beam and the inoherent beam.
+#In addition of searching for PSRCAT hits, it also looks for FermiLAT candidates.
+#It requires that the direcotry with table 4FGL_DR2_Ppsr.fits is specifyied in line 92.
+
 import re
-import sys
 import glob
-import astropy.units as u
+import sys
 import numpy as np
-import matplotlib.pyplot as plt
 from astropy import wcs
+import astropy.units as u
 from astropy.io import fits
 from astropy.time import Time
 from astropy.coordinates import ICRS, Galactic, SkyCoord, EarthLocation, AltAz
+import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse,Circle
 from ast import literal_eval
 from psrqpy import QueryATNF
+#from astropy.utils.iers import conf
+#conf.auto_max_age = None
 
 # MeerKAT location
 meerkat = EarthLocation(lat=-30.713*u.deg, lon=21.4*u.deg)
 
-####### Constants ##############
+#Constants
 survey_beam_radius = 0.2488 # FWHM/sqrt(5)
 parkes_beam_radius = 0.5*0.23333333 # beam width is 14 arcmin at L-Band for Parkes
 survey_beam_area = np.pi*survey_beam_radius*survey_beam_radius
 parkes_beam_area = np.pi*parkes_beam_radius*parkes_beam_radius
-
-#Boresight coordinates
-survey_beam_radius = 0.2488360131953144 # From Ewan's simulations
-incoherent_beam_radius = 2.5*0.2488360131953144 # From Ewan's simulations
-
-################################
-
 
 # From Weiwei's Mosaic
 def convert_equatorial_coordinate_to_pixel(equatorial_coordinates, bore_sight):
@@ -43,11 +42,18 @@ def convert_equatorial_coordinate_to_pixel(equatorial_coordinates, bore_sight):
 
     eq_coordinates = np.array([[equatorial_coordinates.ra.deg,equatorial_coordinates.dec.deg]])    
     scaled_pixel_coordinates = wcs_properties.wcs_world2pix(eq_coordinates, 0)
-    pixel_coordinates = scaled_pixel_coordinates * step 
+    pixel_coordinates = scaled_pixel_coordinates * step
+ 
+    #print (bore_sight.ra.deg, bore_sight.dec.deg)
+    #print (scaled_pixel_coordinates)
+    #print (step)
      
     return pixel_coordinates
 
-# Matplotlib settings
+
+#Boresight coordinates
+survey_beam_radius = 0.2488360131953144 # From Ewan's simulations
+incoherent_beam_radius = 2.5*0.2488360131953144 # From Ewan's simulations
 plt.rc('axes', labelsize=12)    # fontsize of the x and y labels
 plt.rc('xtick', labelsize=8)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=8) 
@@ -55,13 +61,6 @@ plt.rcParams['figure.figsize'] = (10.0, 10.0)
 plt.rcParams['font.family'] = "serif"
 plt.rcParams['figure.dpi'] = 200
 
-# Get number of beams
-def nbeams(data):
-    n = 0
-    for name, target in data["beams"].items():
-        if name.startswith("cfbf") and "unset" not in target:
-            n += 1
-    return n
 
 
 def get_tiling_plot(meta):
@@ -87,11 +86,10 @@ def get_tiling_plot(meta):
     beam_height = 2.0*float(literal_eval(all_info['beamshape'])['y'])
     beam_angle = literal_eval(all_info['beamshape'])['angle']
     
-    # Get all key value pairs for beams and sort them based on beam number
+    
+
     vals = list(all_info['beams'].values())
     keys = list(all_info['beams'].keys())
-    vals = [x for _, x in sorted(zip(keys,vals))]
-    keys = sorted(keys)
 
     # Add known pulsar
     q = QueryATNF(params=['JNAME','RAJ','DECJ'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius))
@@ -99,9 +97,8 @@ def get_tiling_plot(meta):
 
 
     # Add ellipses
+
     for i in range(len(vals)):
-        if 'unset' in vals[i]:
-            continue
         beam_ra = vals[i].split(',')[-2]
         beam_dec = vals[i].split(',')[-1]
         beam_no = keys[i][-3:]
@@ -181,8 +178,7 @@ def get_tiling_plot(meta):
     elv_value = coord_altaz.alt.deg
     
     ### Survey beam filling ratio
-    no_of_beams = nbeams(all_info)
-    print (no_of_beams)
+    no_of_beams = len(vals) - 1 # Remove incoherent beam
     total_area = np.pi*0.25*beam_width*beam_height*no_of_beams
     survey_beam_fill_factor = (total_area/survey_beam_area)/0.91
     

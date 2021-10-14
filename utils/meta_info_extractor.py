@@ -16,14 +16,14 @@ from psrqpy import QueryATNF
 meerkat = EarthLocation(lat=-30.713*u.deg, lon=21.4*u.deg)
 
 ####### Constants ##############
-survey_beam_radius = 0.2488 # FWHM/sqrt(5)
 parkes_beam_radius = 0.5*0.23333333 # beam width is 14 arcmin at L-Band for Parkes
+survey_beam_radius = 0.2488360131953144 # FWHM/sqrt(5) 
+#effelsberg_beam_radius
 survey_beam_area = np.pi*survey_beam_radius*survey_beam_radius
 parkes_beam_area = np.pi*parkes_beam_radius*parkes_beam_radius
 
 #Boresight coordinates
-survey_beam_radius = 0.2488360131953144 # From Ewan's simulations
-incoherent_beam_radius = 2.5*0.2488360131953144 # From Ewan's simulations
+incoherent_beam_radius = 2.5*survey_beam_radius
 
 ################################
 

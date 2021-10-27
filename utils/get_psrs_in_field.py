@@ -1,3 +1,4 @@
+import os
 import sys
 import optparse
 import pandas as pd
@@ -96,7 +97,7 @@ def extract_psrs_from_html(soup):
     else:       
        # Initialise pandas dataframe
        columns = ['PSR', 'RA (deg)', 'DEC (deg)', 'P (ms)', 'DM (pc cm^-3)', 'Survey', 'Separation (deg)']
-       psr_df = pd.DataFrame(columns=columns)        
+       psr_df = pd.DataFrame(columns=columns)       
        all_psr_info = soup.find_all('span')[-2].find("tbody").findAll("tr")
         
        # Generate Pandas Dataframe
@@ -115,10 +116,12 @@ if __name__== "__main__":
 
     # Set options
     parser = optparse.OptionParser()
+    parser.add_option('--tag', type=str, help='Unique tag for final csv file', dest="tag",default="MeerKAT")
     parser.add_option('--search_coordinates', type=str, help='Reference coordinates', dest="coords",default="12:08 -59:36")
     parser.add_option('--search_radius',type=str,help='Radius in deg. around coordinates to look for psrs',dest="radius",default="1.2") # IB at L-Band
     parser.add_option('--search_dm',type=str,help='Reference DM to search in pc cm^-3',dest='dm',default="")
     parser.add_option('--search_dm_tolerance',type=str,help='search DM tolerance in pc cm^-3',dest="dm_tol",default="10.0")
+    parser.add_option('--output_path',type=str,help='Output path to the csv file',dest="output_path",default=os.getcwd())
     opts,args = parser.parse_args() 
 
 
@@ -127,6 +130,6 @@ if __name__== "__main__":
  
     # Get list of pulsars and metadata from the query
     psr_df = extract_psrs_from_html(soup)
-    psr_df.to_csv('psrs_in_field.csv')
+    psr_df.to_csv('{}_known_psrs.csv'.format(opts.tag))
     
 

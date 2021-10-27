@@ -9,7 +9,7 @@ import logging
 import pandas as pd
 
 
-log = logging.getLogger('viewed_candidate_organiser')
+log = logging.getLogger('candy_scraper')
 FORMAT = "[%(levelname)s - %(asctime)s - %(filename)s:%(lineno)s] %(message)s"
 logging.basicConfig(format=FORMAT)
 log.setLevel('INFO')

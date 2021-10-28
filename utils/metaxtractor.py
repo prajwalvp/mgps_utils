@@ -241,7 +241,7 @@ def generate_info_from_meta(opts):
             psr_pixel_ra = boresight_ra_deg + psr_pixel_coordinates[0][0]
             psr_pixel_dec = boresight_dec_deg + psr_pixel_coordinates[0][1]
             psr_pixel_coords = SkyCoord(frame='icrs', ra=psr_pixel_ra, dec = psr_pixel_dec, unit=(u.hour, u.deg))
-            ax.plot(psr_pixel_ra, psr_pixel_dec,'*',label=psr[0],markersize=3.5)    
+            ax.plot(psr_pixel_ra, psr_pixel_dec,'*',label=psr[0]+' (ATNF)',markersize=7.5)    
 
             # Check if pulsar within survey beam, gets closest beam + checks if psr within closest beam region + 3 closest beams
             if psr_coords.separation(boresight_coords).deg <= survey_beam_radius*1.05:
@@ -262,16 +262,17 @@ def generate_info_from_meta(opts):
 
             columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'Period (ms)', 'DM', 'Closest beam', 'Within beam?']
             kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], best_beam, within_flag]          
+
+        kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
              
     elif opts.kp_catalogue == 'PSS':
-        log.info("Using the Pulsar survey scraper to retrieve known pulsars within survey beam")
+        log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
         columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (ms)', 'DM', 'Survey', 'Closest beam(expected)', 'Within beam?']
         kp_df = pd.DataFrame(columns=columns)
         command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
-        str(kp_out)
         if 'No pulsars' in str(kp_out): 
-            log.info("No pulsars from PSS in the survey beam region")
+            log.info("No pulsars from PSS in the incoherent beam region")
         else:
             pss_data = pd.read_csv('{}/{}_known_psrs.csv'.format(os.getcwd(), pointing_name))
             log.info("{} known pulsars found within the incoherent beam".format(len(pss_data.index)))
@@ -280,7 +281,7 @@ def generate_info_from_meta(opts):
                 psr_pixel_coordinates = convert_equatorial_coordinate_to_pixel(psr_coords, boresight_coords, time)
                 psr_pixel_ra = boresight_ra_deg + psr_pixel_coordinates[0][0]
                 psr_pixel_dec = boresight_dec_deg + psr_pixel_coordinates[0][1]
-                ax.plot(psr_pixel_ra, psr_pixel_dec,'*',label=psr['PSR'],markersize=3.5)    
+                ax.plot(psr_pixel_ra, psr_pixel_dec,'*',label=psr['PSR']+' '+'('+psr['Survey']+')',markersize=7.5)    
          
                 if psr_coords.separation(boresight_coords).deg <= survey_beam_radius*1.05:
                     log.info("{} expected within the survey beam region".format(psr['PSR']))
@@ -289,17 +290,17 @@ def generate_info_from_meta(opts):
                     best_ellipse = Ellipse(xy=(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='grey', lw=1.5)
                     ax.add_patch(best_ellipse)
                     if best_ellipse.contains_point(point=(psr_pixel_ra, psr_pixel_dec)):
-                        within_flag=1
+                        within_flag='Y'
                     else:
-                        within_flag=0 
+                        within_flag='N' 
                     best_beam = 'cfbf00{:03d}'.format(psr_idx)
                 else:
-                     best_beam = 'Outside'
-                     within_flag = 0
+                     best_beam = 'Outside survey beam'
+                     within_flag = 'N'
 
                 kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], best_beam, within_flag]          
 
-    kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
+            kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
    
     # Output list of pulsars based on separate unpublished spreadsheets
     if opts.unpublished_flag:
@@ -309,14 +310,21 @@ def generate_info_from_meta(opts):
         unpublished_df = pd.read_csv('https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}'.format(opts.sheet_id, opts.sheet_name))
         gls = unpublished_df['gl (deg) ']
         gbs = unpublished_df['gb (deg) ']
-        unpublished_psrs = SkyCoord(gls*u.deg, gbs*u.deg, frame='galactic').transform_to('icrs')
+        unpublished_psr_coords = SkyCoord(gls*u.deg, gbs*u.deg, frame='galactic').transform_to('icrs')
         max_radius = survey_beam_radius + 0.1166 # 7 arcmin for L-band at Parkes
         unpublished_cnt =0
 
 
-        for i,psr in enumerate(unpublished_psrs):
-            if boresight_coords.separation(psr).deg < max_radius:
-                unpublished_list.loc[unpublished_cnt] = [unpublished_df['PSR Name '][i], unpublished_df['P(ms) '][i], unpublished_df['DM '][i],boresight_coords.separation(psr).deg]         
+        for i,unpublished_psr_coord in enumerate(unpublished_psr_coords):
+            if boresight_coords.separation(unpublished_psr_coord).deg < max_radius:
+                unpublished_list.loc[unpublished_cnt] = [unpublished_df['PSR Name '][i], unpublished_df['P(ms) '][i], unpublished_df['DM '][i],boresight_coords.separation(unpublished_psr_coord).deg]         
+                log.info("{} potentially within survey beam".format(unpublished_df['PSR Name '][i]))
+                unpublished_psr_pixel_coordinates = convert_equatorial_coordinate_to_pixel(unpublished_psr_coord, boresight_coords, time)
+                unpublished_psr_pixel_ra = boresight_ra_deg + unpublished_psr_pixel_coordinates[0][0]
+                unpublished_psr_pixel_dec = boresight_dec_deg + unpublished_psr_pixel_coordinates[0][1]
+                ax.plot(unpublished_psr_pixel_ra, unpublished_psr_pixel_dec,'*',label= unpublished_df['PSR Name '][i] +' (HTRU unpublished)',markersize=7.5)    
+                telescope_beam = Circle((unpublished_psr_pixel_ra, unpublished_psr_pixel_dec), 0.1166666, linestyle='--',linewidth=2.5,fill=False,label='HTRU Parkes beam')
+                ax.add_patch(telescope_beam)
                 unpublished_cnt+=1
         if unpublished_list.empty:
             log.info("No unpublished pulsars within the survey beam")
@@ -326,7 +334,7 @@ def generate_info_from_meta(opts):
 
     # Get Fermi sources in region and plot with r95 ellipse
     if opts.fermi_flag: 
-        log.info("checking for Fermi associations")
+        log.info("checking for Fermi associations...")
         fermi_source_df = get_Fermi_association(opts, boresight_coords)
         if fermi_source_df.empty:
             log.info("No Fermi associations within survey beam region")
@@ -338,8 +346,8 @@ def generate_info_from_meta(opts):
             pixel_fermi_coordinates = convert_equatorial_coordinate_to_pixel(fermi_coords,boresight_coords, time)
             pixel_fermi_ra = boresight_ra_deg + pixel_fermi_coordinates[0][0]
             pixel_fermi_dec = boresight_dec_deg + pixel_fermi_coordinates[0][1]
-            ax.plot(pixel_fermi_ra, pixel_fermi_dec, '*',label=row[0],markersize=4.0) 
-            ellipse = Ellipse(xy=(pixel_fermi_ra, pixel_fermi_dec), width=2.0*row[4], height=2.0*row[5], edgecolor='k', fc='none', lw=1.5, linestyle='--')
+            ax.plot(pixel_fermi_ra, pixel_fermi_dec, '*',label=row[0],markersize=7.5) 
+            ellipse = Ellipse(xy=(pixel_fermi_ra, pixel_fermi_dec), width=2.0*row[4], height=2.0*row[5], edgecolor='k', fc='none', lw=1.5, linestyle='--',label='Fermi r95 region')
             ax.add_patch(ellipse)
 
 
@@ -370,7 +378,7 @@ def generate_info_from_meta(opts):
         user_pixel_coordinates = convert_equatorial_coordinate_to_pixel(user_coords,boresight_coords, time)
         user_pixel_ra = boresight_ra_deg + user_pixel_coordinates[0][0]
         user_pixel_dec = boresight_dec_deg + user_pixel_coordinates[0][1]
-        ax.plot(user_pixel_ra, user_pixel_dec,'*',label='User specified',markersize=4.0) 
+        ax.plot(user_pixel_ra, user_pixel_dec,'*',label='User specified',markersize=7.5) 
  
          
     # Add user beam radius    
@@ -419,7 +427,7 @@ if __name__ =="__main__":
     parser.add_option('--sheet_id', type=str, help = 'Unique spreadheet ID', dest='sheet_id',default=None)
     parser.add_option('--sheet_name', type=str, help = 'Name of sheet of unpublished pulsars', dest='sheet_name',default='reprocessing_discoveries')
     parser.add_option('--check_fermi',type=int, help='Check for possible Fermi associations',dest='fermi_flag',default=1)
-    parser.add_option('--fits_file',type=int, help='Full path for Fermi fits file',dest='fits_file',default=None)
+    parser.add_option('--fits_file',type=str, help='Full path for Fermi fits file',dest='fits_file',default=None)
     parser.add_option('--known_pulsar',type=str, help='Cross match with known pulsar list as specified. Options: ATNF, PSS',dest='kp_catalogue',default='ATNF')
     parser.add_option('--user_coordinate',type=str, help=' Plot user specified coordinates  e.g. 12:08 -59:36',dest='user_coords',default=None)
     parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees',dest='beam_radius', default=survey_beam_radius)

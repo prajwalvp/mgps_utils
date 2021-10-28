@@ -23,13 +23,30 @@ def progress(transferred, total):
     print("Copying: |{}>{}| {}%".format("="*complete, " "*(w-complete),
         int(100*(transferred/total))), end="\r")
 
-def copy_tarballs(user, localpath, basepath, tarballs):
+
+def connect(user):
     ssh = paramiko.SSHClient()
     ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
     ssh.connect("portal.mpifr-bonn.mpg.de",
         username=user,
         password=getpass.getpass(prompt="Password: "))
-    sftp = ssh.open_sftp()
+    return ssh
+
+
+def find_tarballs(conn, basepath, ids):
+    print("Finding matching tarballs")
+    stdin, stdout, stderr = conn.exec_command(f"ls -1 {basepath}")
+    tarballs = []
+    for fname in stdout.readlines():
+        fname = fname.strip()
+        if int(fname.split("_")[1]) in ids:
+            print(f"Found: {fname}")
+            tarballs.append(fname)
+    return tarballs
+
+
+def copy_tarballs(conn, localpath, basepath, tarballs):
+    sftp = conn.open_sftp()
     for tarball in tarballs:
         print(os.path.join(basepath, tarball), os.path.join(localpath, tarball))
         sftp.get(os.path.join(basepath, tarball),
@@ -37,7 +54,7 @@ def copy_tarballs(user, localpath, basepath, tarballs):
             callback=progress)
     print("\nCopy complete")
     sftp.close()
-    ssh.close()
+
 
 def unpack_merge(localpath, tarballs):
     merged_cands_file = open(os.path.join(localpath, "merged_candidates.csv"), "wb")
@@ -58,15 +75,23 @@ def unpack_merge(localpath, tarballs):
     merged_cands_file.close()
     shutil.move("merged_candidates.csv", "candidates.csv")
 
+
+# Remember to close the conn
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-u", "--user", type=str, dest="user", help="Username for SSH connection to MPIfR", default=getpass.getuser())
     parser.add_argument("-r", "--remotepath", type=str, dest="remotepath", help="Remote path where tarballs are located")
     parser.add_argument("-l", "--localpath", type=str, dest="localpath", help="Localpath where tarballs should be unpacked and merged", default="./")
-    parser.add_argument("-t", "--tarballs", type=str, dest="tarballs", nargs="+", help="List of tarballs to retrieve and extract")
+    parser.add_argument("-s", "--start", type=int, dest="start", help="First pointing ID to retrieve")
+    parser.add_argument("-e", "--end", type=int, dest="end", help="Last pointing ID to retrieve")
     args = parser.parse_args()
-    copy_tarballs(args.user, args.localpath, args.remotepath, args.tarballs)
-    unpack_merge(args.localpath, args.tarballs)
+    idxs = list(range(args.start, args.end+1))
+    conn = connect(args.user)
+    tarballs = find_tarballs(conn, args.remotepath, idxs)
+    copy_tarballs(conn, args.localpath, args.remotepath, tarballs)
+    conn.close()
+    unpack_merge(args.localpath, tarballs)
 
 if __name__ == "__main__":
     main()

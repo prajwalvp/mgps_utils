@@ -183,6 +183,7 @@ if __name__ == "__main__":
     parser.add_option('--main_dir', type=str, help='Root directory where all pointing subdirectories are stored', dest='main_dir')
     parser.add_option('--output_dir',type=str, help='Output directory where csvs/tar files will be written out', dest='output_dir')
     parser.add_option('--separate_csvs',type=int, help='Flag for writing out separate csvs for T1/T2 and pulsars', dest='sep_csv',default=0)
+    parser.add_option('--second_revision',type=int, help='Flag for writing out a tarball of T1/T2 plots for second revision', dest='second_revision',default=1)
     #parser.add_option('--known_psr_filter',type=str, help='Filter the non boresight beams to ensure best SNR/position beam retained', dest='filter_psr)
     opts, args = parser.parse_args()
 
@@ -217,6 +218,7 @@ if __name__ == "__main__":
     all_beams_df.drop_duplicates().to_csv('{}/{}_{}_keep_beams.csv'.format(opts.output_dir, os.path.basename(opts.main_dir), opts.tag), index = False)
   
     # Write out a second revision file
-    log.info("Writing out a tarred file containing T1/T2 candidates")
-    write_out_second_revision_tar_file(opts) 
+    if opts.second_revision:
+        log.info("Writing out a tarred file containing T1/T2 candidates for second revision")
+        write_out_second_revision_tar_file(opts) 
  

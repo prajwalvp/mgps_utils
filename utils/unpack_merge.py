@@ -1,4 +1,5 @@
 import os
+import sys
 import paramiko
 import getpass
 import tarfile
@@ -61,7 +62,7 @@ def unpack_merge(localpath, tarballs):
     has_header = False
 
     for tarball in tarballs:
-        f = tarfile.open(tarball, "r:gz")
+        f = tarfile.open(localpath+'/'+tarball, "r:gz")
         candfile = f.extractfile("candidates.csv")
         if not has_header:
             merged_cands_file.write(candfile.read())
@@ -73,7 +74,7 @@ def unpack_merge(localpath, tarballs):
         f.extractall(path=localpath)
         f.close()
     merged_cands_file.close()
-    shutil.move("merged_candidates.csv", "candidates.csv")
+    shutil.move("{}/merged_candidates.csv".format(localpath), "{}/candidates.csv".format(localpath))
 
 
 # Remember to close the conn

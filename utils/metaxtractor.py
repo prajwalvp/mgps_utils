@@ -52,7 +52,7 @@ plt.rc('xtick', labelsize=8)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=8) 
 plt.rcParams['figure.figsize'] = (10.0, 10.0)
 plt.rcParams['font.family'] = "serif"
-plt.rcParams['figure.dpi'] = 200
+plt.rcParams['figure.dpi'] = 300
 
 
 
@@ -170,8 +170,31 @@ def get_Fermi_association(opts,boresight_coords):
             fermi_cnt+=1
              
     return fermi_source_df
+
+def pointInEllipse(x,y,xp,yp,d,D,angle):
+    """
+    tests if a point[xp,yp] is within
+    boundaries defined by the ellipse
+    of center[x,y], diameter d D, and tilted at angle
+    """
+
+    cosa=math.cos(angle)
+    sina=math.sin(angle)
+    dd=d/2*d/2
+    DD=D/2*D/2
+
+    a = math.pow(cosa*(xp-x)+sina*(yp-y),2)
+    b = math.pow(sina*(xp-x)-cosa*(yp-y),2)
+    ellipse=(a/dd)+(b/DD)
+    if ellipse <= 1:
+        return True
+    else:
+        return False
+
+
+
                 
-def generate_info_from_meta(opts):
+def generate_info_from_meta(opts, ax):
     """
     Main function where all the info is generated from a meta file
     """
@@ -179,16 +202,21 @@ def generate_info_from_meta(opts):
         data = f.read()
     all_info = literal_eval(data)   
 
-    plt.clf()
-    fig, ax = plt.subplots()
-    ax.set_aspect(1)    
      
     # UTC Time
     utc_time = all_info['utc_start'].replace(" ","T").replace("/","-")
     time = Time(utc_time)
 
+
     # Pointing name 
     pointing_name = all_info['boresight'].split(',')[0]
+
+
+    # Check if pointing name files already exist and skip them
+    if os.path.isfile('{}/{}.png'.format(opts.output_path, pointing_name)):
+        log.info("Info about {} already exists in output path".format(pointing_name))
+        return None 
+        
 
     log.info("Pointing Name: {}".format(pointing_name))
     log.info("Observed UTC Time: {}".format(utc_time))
@@ -251,11 +279,14 @@ def generate_info_from_meta(opts):
   
                 best_ellipse = Ellipse(xy=(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='grey', lw=1.5)
                 ax.add_patch(best_ellipse)
-                if best_ellipse.contains_point(point=(psr_pixel_ra, psr_pixel_dec)): 
+                # Use geometric formula directly since contains point function is failing. 
+                best_beam = 'cfbf00{:03d}'.format(psr_idx)
+                if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
+                    log.info("{} is within the {} beam region".format(psr[0], best_beam))
                     within_flag='Y'
                 else:
                     within_flag='N'
-                best_beam = 'cfbf00{:03d}'.format(psr_idx)
+                #get_neighbour_beams()
             else:
                 best_beam = 'Outside survey beam'
                 within_flag = 'N'
@@ -275,13 +306,17 @@ def generate_info_from_meta(opts):
             log.info("No pulsars from PSS in the incoherent beam region")
         else:
             pss_data = pd.read_csv('{}/{}_known_psrs.csv'.format(os.getcwd(), pointing_name))
+            os.remove("{}/{}_known_psrs.csv".format(os.getcwd(), pointing_name)) 
             log.info("{} known pulsars found within the incoherent beam".format(len(pss_data.index)))
             for index, psr in pss_data.iterrows():
                 psr_coords = SkyCoord(frame='icrs', ra=psr['RA (deg)'], dec=psr['DEC (deg)'], unit=(u.deg, u.deg))
                 psr_pixel_coordinates = convert_equatorial_coordinate_to_pixel(psr_coords, boresight_coords, time)
                 psr_pixel_ra = boresight_ra_deg + psr_pixel_coordinates[0][0]
                 psr_pixel_dec = boresight_dec_deg + psr_pixel_coordinates[0][1]
-                ax.plot(psr_pixel_ra, psr_pixel_dec,'*',label=psr['PSR']+' '+'('+psr['Survey']+')',markersize=7.5)    
+                ax.plot(psr_pixel_ra, psr_pixel_dec,'*',label=psr['PSR']+' '+'('+psr['Survey']+')',markersize=7.5)   
+                if 'HTRU-S' in psr['Survey']: 
+                    parkes_telescope_beam = Circle((psr_pixel_ra, psr_pixel_dec), 0.1166666, linestyle='--',linewidth=2.5,fill=False,label='HTRU-S Low-latitude Parkes beam')
+                    ax.add_patch(parkes_telescope_beam)
          
                 if psr_coords.separation(boresight_coords).deg <= survey_beam_radius*1.05:
                     log.info("{} expected within the survey beam region".format(psr['PSR']))
@@ -289,11 +324,13 @@ def generate_info_from_meta(opts):
                     psr_idx, psr_d2d, psr_d3d = psr_coords.match_to_catalog_sky(coherent_beam_coords) 
                     best_ellipse = Ellipse(xy=(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='grey', lw=1.5)
                     ax.add_patch(best_ellipse)
-                    if best_ellipse.contains_point(point=(psr_pixel_ra, psr_pixel_dec)):
+                    #if best_ellipse.contains_point(point=(psr_pixel_ra, psr_pixel_dec)):
+                    best_beam = 'cfbf00{:03d}'.format(psr_idx)
+                    if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
+                        log.info("{} is within the {} beam region".format(psr['PSR'], best_beam))
                         within_flag='Y'
                     else:
                         within_flag='N' 
-                    best_beam = 'cfbf00{:03d}'.format(psr_idx)
                 else:
                      best_beam = 'Outside survey beam'
                      within_flag = 'N'
@@ -346,9 +383,12 @@ def generate_info_from_meta(opts):
             pixel_fermi_coordinates = convert_equatorial_coordinate_to_pixel(fermi_coords,boresight_coords, time)
             pixel_fermi_ra = boresight_ra_deg + pixel_fermi_coordinates[0][0]
             pixel_fermi_dec = boresight_dec_deg + pixel_fermi_coordinates[0][1]
-            ax.plot(pixel_fermi_ra, pixel_fermi_dec, '*',label=row[0],markersize=7.5) 
-            ellipse = Ellipse(xy=(pixel_fermi_ra, pixel_fermi_dec), width=2.0*row[4], height=2.0*row[5], edgecolor='k', fc='none', lw=1.5, linestyle='--',label='Fermi r95 region')
-            ax.add_patch(ellipse)
+            ax.plot(pixel_fermi_ra, pixel_fermi_dec, '*',label=row[0]+ ' ({})'.format(row[3]),markersize=7.5)
+            if not math.isnan(row[4]): # If source is extended, skip r95 ellipse plot        
+                ellipse = Ellipse(xy=(pixel_fermi_ra, pixel_fermi_dec), width=2.0*row[4], height=2.0*row[5], edgecolor='k', fc='none', lw=1.5, linestyle='--',label='Fermi r95 region')
+                ax.add_patch(ellipse)
+            else:
+                log.info("{} is an extended Fermi source. R95 region is invalid".format(row[0]))
 
 
     # Add ellipses
@@ -369,7 +409,8 @@ def generate_info_from_meta(opts):
         ellipse = Ellipse(xy=(pixel_beam_ra, pixel_beam_dec), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='none', lw=1.5)
         ax.add_patch(ellipse)
         # Add beam numbers
-        ax.annotate(beam_no, (pixel_beam_ra,pixel_beam_dec),fontsize=2)  
+        if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
+            ax.annotate(beam_no, (pixel_beam_ra,pixel_beam_dec),fontsize=2)  
     
    
     # Add user specified coordinates
@@ -382,16 +423,17 @@ def generate_info_from_meta(opts):
  
          
     # Add user beam radius    
-    if opts.beam_radius == survey_beam_radius:
-        user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
-    else:
-        user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Telescope beam')
-        
-    ax.add_patch(user_circle)
+    if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
+        if opts.beam_radius == survey_beam_radius:
+            user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
+        else:
+            user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Telescope beam')       
+        ax.add_patch(user_circle)
 
-    # Incoherent beam radius
-    incoherent_circle = Circle((boresight_ra_deg,boresight_dec_deg), incoherent_beam_radius, color='green',linestyle='--',linewidth=2.5,fill=False,label='Incoherent beam')
-    ax.add_patch(incoherent_circle)
+    #Incoherent beam radius
+    if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
+        incoherent_circle = Circle((boresight_ra_deg,boresight_dec_deg), incoherent_beam_radius, color='green',linestyle='--',linewidth=2.5,fill=False,label='Incoherent beam')
+        ax.add_patch(incoherent_circle)
 
     ### Get elevation 
     
@@ -413,16 +455,18 @@ def generate_info_from_meta(opts):
     #plotting ornaments
     ax.set_xlabel('Right Ascension (Degrees)')
     ax.set_ylabel('Declination (Degrees)')
-    ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
+    if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
+        ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
     plt.legend(prop={"size":6})
-    plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name),dpi=300)
-
+    #plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name),dpi=300)
     log.info("Output path: {}".format(opts.output_path))
+    return pointing_name
+
 
 if __name__ =="__main__":
     # Select options
     parser = optparse.OptionParser()
-    parser.add_option('--meta_path', type=str, help = 'Path to meta file', dest='meta')
+    parser.add_option('--meta_path', type=str, help = 'Path to meta file', dest='meta_path')
     parser.add_option('--check_unpublished', type=int, help = 'Flag for checking unpublished sources', dest='unpublished_flag',default=0)
     parser.add_option('--sheet_id', type=str, help = 'Unique spreadheet ID', dest='sheet_id',default=None)
     parser.add_option('--sheet_name', type=str, help = 'Name of sheet of unpublished pulsars', dest='sheet_name',default='reprocessing_discoveries')
@@ -434,5 +478,32 @@ if __name__ =="__main__":
     parser.add_option('--output_path',type=str, help='Path to store output files',dest='output_path', default=os.getcwd())
     opts, args = parser.parse_args()
 
-    # Parse opts to get plot and other functions
-    generate_info_from_meta(opts)    
+
+    # Initialise the plot
+    plt.clf()
+    fig, ax = plt.subplots()
+    ax.set_aspect(1)    
+
+    # Check if multiple metafiles in path
+    meta_files = glob.glob('{}/*.meta'.format(opts.meta_path))
+    if len(meta_files) > 1:
+        log.info("Multiple meta files found in path")
+        pointing_names=[]
+        for meta in meta_files:
+            opts.meta = meta
+            try:  
+                pointing_names.append(generate_info_from_meta(opts, ax)) 
+                plt.savefig('{}/{}.png'.format(opts.output_path, ','.join(map(str,pointing_names)))) 
+            except TypeError:
+                log.info("Pointing info exists already. Continue to next meta file")
+                continue
+              
+    else:
+        opts.meta = glob.glob('{}/*.meta'.format(opts.meta_path))[0]
+        try:
+            pointing_name = generate_info_from_meta(opts, ax)
+            plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name))
+        except TypeError:
+            log.info("Pointing info exists already.")
+   
+            

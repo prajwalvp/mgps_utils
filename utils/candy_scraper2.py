@@ -31,8 +31,10 @@ def write_t1_t2_beams(opts):
     columns = ['filterbank_path','username','reason']
     t1_t2_all = pd.DataFrame(columns=columns)
 
-    classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
+    #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
+    #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
+    all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir))
 
     if len(classified_files) != len(all_candidate_csvs):
         raise Exception("The total number of classification files does not match the total candidate.csv files! Please check for multiple redundant files")
@@ -68,8 +70,10 @@ def write_known_pulsar_beams(opts):
     columns = ['filterbank_path','username','reason']
     kp_all = pd.DataFrame(columns=columns)
 
-    classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
+    #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
+    #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
+    all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir))
 
     if len(classified_files) != len(all_candidate_csvs):
         raise Exception("The total number of classification files does not match the total candidate.csv files! Please check for multiple redundant files")

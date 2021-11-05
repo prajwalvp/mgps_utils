@@ -32,12 +32,12 @@ def write_t1_t2_beams(opts):
     t1_t2_all = pd.DataFrame(columns=columns)
 
     #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c]
     #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
     all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir))
 
     if len(classified_files) != len(all_candidate_csvs):
-        raise Exception("The total number of classification files does not match the total candidate.csv files! Please check for multiple redundant files")
+        raise Exception("The total number of files with input tag does not match the total candidate.csv files! Please check for multiple redundant files")
     
     for i,classified_file in enumerate(classified_files):
         log.info('Checking {}'.format(os.path.dirname(classified_file)))
@@ -57,7 +57,7 @@ def write_t1_t2_beams(opts):
             t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])]['classification'].to_list()
             t1_t2_beams_df['reason'] = opts.survey_name + ' ' + t1_t2_beams_df['reason'].astype(str) 
 
-            log.info("Number of T1/T2 cands found: {}".format(t1_t2_beams_df.shape[0]))
+            log.info("Number of T1/T2 cands found: {}".format(t1_t2_beams_df.drop_duplicates().shape[0]))
             t1_t2_all = t1_t2_all.append(t1_t2_beams_df, ignore_index=True)
 
     return t1_t2_all 
@@ -71,7 +71,7 @@ def write_known_pulsar_beams(opts):
     kp_all = pd.DataFrame(columns=columns)
 
     #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c]
     #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
     all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir))
 
@@ -96,7 +96,7 @@ def write_known_pulsar_beams(opts):
             kp_beams_df['reason'] = kp_df[kp_df['png'].isin(candidate_meta_df['png_path'])]['classification'].to_list()
             kp_beams_df['reason'] = opts.survey_name + ' ' + kp_beams_df['reason'].astype(str) 
 
-            log.info("Number of known pulsar cands found: {}".format(kp_beams_df.shape[0]))
+            log.info("Number of known pulsar cands found: {}".format(kp_beams_df.drop_duplicates().shape[0]))
             kp_all = kp_all.append(kp_beams_df, ignore_index=True)
 
 
@@ -136,11 +136,13 @@ def write_out_second_revision_tar_file(opts):
         os.makedirs(second_round_path+'/metafiles') 
 
     # Transfer all necessary  T1/T2 plots + metafiles
-    classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir)) 
+    #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c]
+    #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir)) 
+    all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir)) 
 
     if len(classified_files) != len(all_candidate_csvs):
-        raise Exception("The total number of classification files does not match the total candidate.csv files! Please check for multiple redundant files")
+        raise Exception("The total number of files with input tag does not match the total candidate.csv files! Please check for multiple redundant files")
 
     for i,classified_file in enumerate(classified_files):
         log.info('Checking {}'.format(os.path.dirname(classified_file)))
@@ -183,11 +185,11 @@ if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('--name_tag', type=str, help = 'Name tag for searching classified files', dest='tag', default='autosave')
     parser.add_option('--username', type=str, help = 'MGPS/TRAPUM login username', dest='username')
-    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L)', dest='survey_name',default='MGPS-L')
+    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L) ; Default is MGPS-L', dest='survey_name',default='MGPS-L')
     parser.add_option('--main_dir', type=str, help='Root directory where all pointing subdirectories are stored', dest='main_dir')
-    parser.add_option('--output_dir',type=str, help='Output directory where csvs/tar files will be written out', dest='output_dir')
-    parser.add_option('--separate_csvs',type=int, help='Flag for writing out separate csvs for T1/T2 and pulsars', dest='sep_csv',default=0)
-    parser.add_option('--second_revision',type=int, help='Flag for writing out a tarball of T1/T2 plots for second revision', dest='second_revision',default=1)
+    parser.add_option('--output_dir',type=str, help='Output directory where csvs/tar files will be written out (Default is same as root directory specified)', dest='output_dir')
+    parser.add_option('--separate_csvs',type=int, help='Flag for writing out separate csvs for T1/T2 and pulsars (Default:0)', dest='sep_csv',default=0)
+    parser.add_option('--second_revision',type=int, help='Flag for writing out a tarball of T1/T2 plots for second revision (Default:1)', dest='second_revision',default=1)
     #parser.add_option('--known_psr_filter',type=str, help='Filter the non boresight beams to ensure best SNR/position beam retained', dest='filter_psr)
     opts, args = parser.parse_args()
 
@@ -213,12 +215,12 @@ if __name__ == "__main__":
     kp_df = write_known_pulsar_beams(opts) 
     if opts.sep_csv:
         # Write out known pulsar beam path+names
-        log.info("Writing out beams for {} known pulsar cands in total found in {}".format(t1_t2_df.shape[0], opts.main_dir))
+        log.info("Writing out beams for {} known pulsar cands in total found in {}".format(kp_df.drop_duplicates().shape[0], opts.main_dir))
         kp_df.drop_duplicates().to_csv('{}/{}_{}_keep_pulsar_cands.csv'.format(opts.output_dir, os.path.basename(opts.main_dir), opts.tag), index = False)
 
     # Write out a csv file for beams to be retained
     all_beams_df = t1_t2_df.append(kp_df, ignore_index=True)
-    log.info("Writing out beams for all known pulsar and T1/T2 cands (Total: {}) found in {}".format(all_beams_df.shape[0], opts.main_dir))
+    log.info("Writing out beams for all known pulsar and T1/T2 cands (Total: {}) found in {}".format(all_beams_df.drop_duplicates().shape[0], opts.main_dir))
     all_beams_df.drop_duplicates().to_csv('{}/{}_{}_keep_beams.csv'.format(opts.output_dir, os.path.basename(opts.main_dir), opts.tag), index = False)
   
     # Write out a second revision file

@@ -52,7 +52,7 @@ plt.rc('xtick', labelsize=8)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=8) 
 plt.rcParams['figure.figsize'] = (10.0, 10.0)
 plt.rcParams['font.family'] = "serif"
-plt.rcParams['figure.dpi'] = 300
+plt.rcParams['figure.dpi'] = 400
 
 
 
@@ -194,7 +194,7 @@ def pointInEllipse(x,y,xp,yp,d,D,angle):
 
 
                 
-def generate_info_from_meta(opts, ax):
+def generate_info_from_meta(opts):
     """
     Main function where all the info is generated from a meta file
     """
@@ -202,6 +202,10 @@ def generate_info_from_meta(opts, ax):
         data = f.read()
     all_info = literal_eval(data)   
 
+    # Initialise the plot
+    plt.clf()
+    fig, ax = plt.subplots()
+    ax.set_aspect(1)    
      
     # UTC Time
     utc_time = all_info['utc_start'].replace(" ","T").replace("/","-")
@@ -286,7 +290,6 @@ def generate_info_from_meta(opts, ax):
                     within_flag='Y'
                 else:
                     within_flag='N'
-                #get_neighbour_beams()
             else:
                 best_beam = 'Outside survey beam'
                 within_flag = 'N'
@@ -409,8 +412,7 @@ def generate_info_from_meta(opts, ax):
         ellipse = Ellipse(xy=(pixel_beam_ra, pixel_beam_dec), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='none', lw=1.5)
         ax.add_patch(ellipse)
         # Add beam numbers
-        if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
-            ax.annotate(beam_no, (pixel_beam_ra,pixel_beam_dec),fontsize=2)  
+        ax.annotate(beam_no, (pixel_beam_ra,pixel_beam_dec),fontsize=2)  
     
    
     # Add user specified coordinates
@@ -423,17 +425,15 @@ def generate_info_from_meta(opts, ax):
  
          
     # Add user beam radius    
-    if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
-        if opts.beam_radius == survey_beam_radius:
-            user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
-        else:
-            user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Telescope beam')       
+    if opts.beam_radius == survey_beam_radius:
+        user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
+    else:
+        user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Telescope beam')       
         ax.add_patch(user_circle)
 
     #Incoherent beam radius
-    if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
-        incoherent_circle = Circle((boresight_ra_deg,boresight_dec_deg), incoherent_beam_radius, color='green',linestyle='--',linewidth=2.5,fill=False,label='Incoherent beam')
-        ax.add_patch(incoherent_circle)
+    incoherent_circle = Circle((boresight_ra_deg,boresight_dec_deg), incoherent_beam_radius, color='green',linestyle='--',linewidth=2.5,fill=False,label='Incoherent beam')
+    ax.add_patch(incoherent_circle)
 
     ### Get elevation 
     
@@ -455,55 +455,29 @@ def generate_info_from_meta(opts, ax):
     #plotting ornaments
     ax.set_xlabel('Right Ascension (Degrees)')
     ax.set_ylabel('Declination (Degrees)')
-    if len(glob.glob('{}/*.meta'.format(opts.meta_path))) == 1:
-        ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
+    ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
     plt.legend(prop={"size":6})
-    #plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name),dpi=300)
+    plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name), dpi=400)
     log.info("Output path: {}".format(opts.output_path))
-    return pointing_name
 
 
 if __name__ =="__main__":
     # Select options
     parser = optparse.OptionParser()
-    parser.add_option('--meta_path', type=str, help = 'Path to meta file', dest='meta_path')
-    parser.add_option('--check_unpublished', type=int, help = 'Flag for checking unpublished sources', dest='unpublished_flag',default=0)
+    parser.add_option('--meta_path', type=str, help = 'Path to meta file (Full path)', dest='meta')
+    parser.add_option('--check_unpublished', type=int, help = 'Flag for checking unpublished sources (Default: 0)', dest='unpublished_flag',default=0)
     parser.add_option('--sheet_id', type=str, help = 'Unique spreadheet ID', dest='sheet_id',default=None)
-    parser.add_option('--sheet_name', type=str, help = 'Name of sheet of unpublished pulsars', dest='sheet_name',default='reprocessing_discoveries')
-    parser.add_option('--check_fermi',type=int, help='Check for possible Fermi associations',dest='fermi_flag',default=1)
-    parser.add_option('--fits_file',type=str, help='Full path for Fermi fits file',dest='fits_file',default=None)
+    parser.add_option('--sheet_name', type=str, help = 'Name of sheet of unpublished pulsars (Default: reprocessing_discoveries)', dest='sheet_name',default='reprocessing_discoveries')
+    parser.add_option('--check_fermi',type=int, help='Check for possible Fermi associations (Default: 1)',dest='fermi_flag',default=1)
+    parser.add_option('--fits_file',type=str, help='Full path for Fermi fits file (Defaults to Fermi fits file in current working directory)',dest='fits_file',default=None)
     parser.add_option('--known_pulsar',type=str, help='Cross match with known pulsar list as specified. Options: ATNF, PSS',dest='kp_catalogue',default='ATNF')
     parser.add_option('--user_coordinate',type=str, help=' Plot user specified coordinates  e.g. 12:08 -59:36',dest='user_coords',default=None)
-    parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees',dest='beam_radius', default=survey_beam_radius)
-    parser.add_option('--output_path',type=str, help='Path to store output files',dest='output_path', default=os.getcwd())
+    parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees (Defaults to survey beam radius for MGPS-L)',dest='beam_radius', default=survey_beam_radius)
+    parser.add_option('--output_path',type=str, help='Path to store output files (Defaults to current working directory)',dest='output_path', default=os.getcwd())
     opts, args = parser.parse_args()
 
-
-    # Initialise the plot
-    plt.clf()
-    fig, ax = plt.subplots()
-    ax.set_aspect(1)    
-
-    # Check if multiple metafiles in path
-    meta_files = glob.glob('{}/*.meta'.format(opts.meta_path))
-    if len(meta_files) > 1:
-        log.info("Multiple meta files found in path")
-        pointing_names=[]
-        for meta in meta_files:
-            opts.meta = meta
-            try:  
-                pointing_names.append(generate_info_from_meta(opts, ax)) 
-                plt.savefig('{}/{}.png'.format(opts.output_path, ','.join(map(str,pointing_names)))) 
-            except TypeError:
-                log.info("Pointing info exists already. Continue to next meta file")
-                continue
+    # Generate all info for pointing
+    generate_info_from_meta(opts)
               
-    else:
-        opts.meta = glob.glob('{}/*.meta'.format(opts.meta_path))[0]
-        try:
-            pointing_name = generate_info_from_meta(opts, ax)
-            plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name))
-        except TypeError:
-            log.info("Pointing info exists already.")
    
             

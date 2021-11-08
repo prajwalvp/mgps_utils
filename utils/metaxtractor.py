@@ -3,6 +3,7 @@ import os
 import sys
 import math
 import glob
+import getpass
 import logging
 import subprocess
 import optparse
@@ -192,7 +193,25 @@ def pointInEllipse(x,y,xp,yp,d,D,angle):
         return False
 
 
+def write_keep_beams_csv(opts, best_beams, best_psrs):
+    """
+    Write out a file with paths to filterbanks to be retained where known pulsars are expected 
+    """
+    with open(opts.meta,'r') as f:
+        data = f.read()
+    all_info = literal_eval(data)   
 
+    filterbank_path = all_info['output_dir']
+    columns = ['filterbank_path','username','reason']    
+    keep_beams_df = pd.DataFrame(columns=columns)
+        
+    for i,psr in enumerate(best_psrs):
+        keep_beams_df.loc[i] = [filterbank_path+'/'+best_beams[i], opts.username, opts.survey_name + ' KNOWN PSR ({})'.format(psr)]
+   
+    if keep_beams_df.shape[0] > 0: 
+        keep_beams_df.to_csv("{}/{}_keep_beams_suggested.csv".format(opts.output_path, all_info['boresight'].split(',')[0]), index=False)
+    else:
+        log.info("No beams suggested to be retained")
                 
 def generate_info_from_meta(opts):
     """
@@ -259,7 +278,7 @@ def generate_info_from_meta(opts):
 
     if opts.kp_catalogue == 'ATNF':
         log.info("Querying the ATNF catalogue and retrieving all known pulsars")
-        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Closest beam(expected)', 'Within beam?']
+        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
 
         q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius))
@@ -267,6 +286,8 @@ def generate_info_from_meta(opts):
 
         log.info("{} known pulsars found within the incoherent beam".format(len(pulsar_list)))
 
+        best_beams=[]
+        best_psrs=[]
         for i, psr in enumerate(pulsar_list):
             psr_coords = SkyCoord(frame='icrs', ra=psr[1], dec=psr[2], unit=(u.hour, u.deg))
             psr_pixel_coordinates = convert_equatorial_coordinate_to_pixel(psr_coords,boresight_coords, time)
@@ -283,31 +304,49 @@ def generate_info_from_meta(opts):
   
                 best_ellipse = Ellipse(xy=(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='grey', lw=1.5)
                 ax.add_patch(best_ellipse)
-                # Use geometric formula directly since contains point function is failing. 
+
                 best_beam = 'cfbf00{:03d}'.format(psr_idx)
+                best_beams.append(best_beam) 
+                best_psrs.append(psr['PSR']) 
+
+                # Use geometric formula directly since contains point function is failing. 
                 if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
                     log.info("{} is within the {} beam region".format(psr[0], best_beam))
                     within_flag='Y'
                 else:
                     within_flag='N'
+                
+                #Neighbouring beams within 2 beamwidths
+                sep_limit = max (2.0*beam_width, 2.0*beam_height)
+                all_seps = psr_coords.separation(coherent_beam_coords)
+                all_beams_sorted = np.argsort(all_seps)
+                neighbour_beam_list = ";".join(map(str,list(all_beams_sorted[1:min(7, len(all_beams_sorted))]))) 
+
+
             else:
                 best_beam = 'Outside survey beam'
                 within_flag = 'N'
+                neighbour_beam_list = "None"
 
-            columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'Period (ms)', 'DM', 'Closest beam', 'Within beam?']
-            kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], best_beam, within_flag]          
+            kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], best_beam, within_flag, neighbour_beam_list]          
 
         kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
+
+        if opts.keep_beams:
+            log.info("Writing out a file with beams to keep")
+            write_keep_beams_csv(opts, best_beams, best_psrs)
              
     elif opts.kp_catalogue == 'PSS':
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
-        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (ms)', 'DM', 'Survey', 'Closest beam(expected)', 'Within beam?']
+        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
         command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
         if 'No pulsars' in str(kp_out): 
             log.info("No pulsars from PSS in the incoherent beam region")
         else:
+            best_beams=[]
+            best_psrs=[]
             pss_data = pd.read_csv('{}/{}_known_psrs.csv'.format(os.getcwd(), pointing_name))
             os.remove("{}/{}_known_psrs.csv".format(os.getcwd(), pointing_name)) 
             log.info("{} known pulsars found within the incoherent beam".format(len(pss_data.index)))
@@ -327,26 +366,42 @@ def generate_info_from_meta(opts):
                     psr_idx, psr_d2d, psr_d3d = psr_coords.match_to_catalog_sky(coherent_beam_coords) 
                     best_ellipse = Ellipse(xy=(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='grey', lw=1.5)
                     ax.add_patch(best_ellipse)
-                    #if best_ellipse.contains_point(point=(psr_pixel_ra, psr_pixel_dec)):
+
                     best_beam = 'cfbf00{:03d}'.format(psr_idx)
+                    best_beams.append(best_beam) 
+                    best_psrs.append(psr['PSR']) 
+
                     if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
                         log.info("{} is within the {} beam region".format(psr['PSR'], best_beam))
                         within_flag='Y'
                     else:
-                        within_flag='N' 
+                        within_flag='N'
+                    #Neighbouring beams within 2 beamwidths
+                    sep_limit = max (2.0*beam_width, 2.0*beam_height)
+                    all_seps = psr_coords.separation(coherent_beam_coords)
+                    all_beams_sorted = np.argsort(all_seps)
+                    neighbour_beam_list = ";".join(map(str,list(all_beams_sorted[1:min(7, len(all_beams_sorted))]))) 
+                    
                 else:
                      best_beam = 'Outside survey beam'
                      within_flag = 'N'
-
-                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], best_beam, within_flag]          
+                     neighbour_beam_list="None"
+                
+                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], best_beam, within_flag, neighbour_beam_list]          
 
             kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
-   
+            
+            if opts.keep_beams:
+                log.info("Writing out a file with beams to keep")
+                write_keep_beams_csv(opts, best_beams, best_psrs)
+                  
     # Output list of pulsars based on separate unpublished spreadsheets
     if opts.unpublished_flag:
         log.info("Checking unpublished spreadsheets for known pulsars..")       
+        if isinstance (opts.sheet_id, type(None)):
+            raise Exception("Unique Sheet ID for spreadsheet not specified!") 
         Columns = ['PSR','P(ms)','DM','Separation (deg)']
-        unpublished_list = pd.DataFrame(columns=Columns)
+        unpublished_list = pd.DataFrame(columns=Columns) 
         unpublished_df = pd.read_csv('https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}'.format(opts.sheet_id, opts.sheet_name))
         gls = unpublished_df['gl (deg) ']
         gbs = unpublished_df['gb (deg) ']
@@ -427,6 +482,7 @@ def generate_info_from_meta(opts):
     # Add user beam radius    
     if opts.beam_radius == survey_beam_radius:
         user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
+        ax.add_patch(user_circle)
     else:
         user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Telescope beam')       
         ax.add_patch(user_circle)
@@ -456,10 +512,12 @@ def generate_info_from_meta(opts):
     ax.set_xlabel('Right Ascension (Degrees)')
     ax.set_ylabel('Declination (Degrees)')
     ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
+    ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
+    ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
     plt.legend(prop={"size":6})
     plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name), dpi=400)
-    log.info("Output path: {}".format(opts.output_path))
 
+    log.info("Output path: {}".format(opts.output_path))
 
 if __name__ =="__main__":
     # Select options
@@ -473,7 +531,10 @@ if __name__ =="__main__":
     parser.add_option('--known_pulsar',type=str, help='Cross match with known pulsar list as specified. Options: ATNF, PSS',dest='kp_catalogue',default='ATNF')
     parser.add_option('--user_coordinate',type=str, help=' Plot user specified coordinates  e.g. 12:08 -59:36',dest='user_coords',default=None)
     parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees (Defaults to survey beam radius for MGPS-L)',dest='beam_radius', default=survey_beam_radius)
+    parser.add_option('--username',type=str, help='Username of person running (Defaults to username of local machine)',dest='username', default=getpass.getuser())
+    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L) ; Default is MGPS-L', dest='survey_name',default='MGPS-L')
     parser.add_option('--output_path',type=str, help='Path to store output files (Defaults to current working directory)',dest='output_path', default=os.getcwd())
+    parser.add_option('--keep_beams',type=int, help='Flag to write out list of beams to keep based on expected known pulsars (Defaults to 1)',dest='keep_beams', default=1)
     opts, args = parser.parse_args()
 
     # Generate all info for pointing

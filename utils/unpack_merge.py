@@ -45,6 +45,7 @@ def copy_tarballs(user, localpath, basepath, tarballs):
 
 def unpack_merge(localpath, tarballs):
     merged_cands_file = open(os.path.join(localpath, "merged_candidates.csv"), "wb")
+    cands_file = os.path.join(localpath, "candidates.csv")
     has_header = False
 
     for tarball in tarballs:
@@ -60,7 +61,7 @@ def unpack_merge(localpath, tarballs):
         f.extractall(path=localpath)
         f.close()
     merged_cands_file.close()
-    shutil.move("merged_candidates.csv", "candidates.csv")
+    shutil.move(merged_cands_file, cands_file)
 
 
 def main():

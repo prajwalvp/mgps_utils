@@ -44,7 +44,8 @@ def copy_tarballs(user, localpath, basepath, tarballs):
 
 
 def unpack_merge(localpath, tarballs):
-    merged_cands_file = open(os.path.join(localpath, "merged_candidates.csv"), "wb")
+    merged_cands_filename =os.path.join(localpath, "merged_candidates.csv")
+    merged_cands_file = open(merged_cands_filename, "wb")
     cands_file = os.path.join(localpath, "candidates.csv")
     has_header = False
 

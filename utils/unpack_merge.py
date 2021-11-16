@@ -62,7 +62,7 @@ def unpack_merge(localpath, tarballs):
         f.extractall(path=localpath)
         f.close()
     merged_cands_file.close()
-    shutil.move(merged_cands_file, cands_file)
+    shutil.move(merged_cands_filename, cands_file)
 
 
 def main():

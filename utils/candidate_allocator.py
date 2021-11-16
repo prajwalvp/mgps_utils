@@ -1,25 +1,26 @@
 import argparse
 import glob
 import os
+from collections import OrderedDict
 
 
 def get_tarballs(tarballs):
     complete_list = []
     for tarball in tarballs:
-        complete_list.extend(glob.glob(tarball))
+        complete_list.extend(sorted(glob.glob(tarball)))
     return complete_list
-
 
 def split_by_user(users, tarballs):
     nusers = len(users)
     ntarballs = len(tarballs)
-    allocations = {i: [] for i in users}
+    allocations = OrderedDict()
+    for user in users:
+        allocations[user] = []
     while tarballs:
         for user in users:
             if tarballs:
                 allocations[user].append(tarballs.pop(0))
     return allocations
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -33,3 +34,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

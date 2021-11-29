@@ -51,7 +51,7 @@ def write_t1_t2_beams(opts):
             candidate_meta_df = pd.read_csv(all_candidate_csvs[i])
             t1_t2_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_t2_df['png'])][['filterbank_path']]
             t1_t2_beams_df['filterbank_path'] = t1_t2_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
-            
+             
             t1_t2_beams_df = t1_t2_beams_df.assign(username = opts.username)
             
             t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])]['classification'].to_list()
@@ -125,7 +125,7 @@ def write_out_second_revision_tar_file(opts):
     t1_t2_all_classified_df = pd.DataFrame(columns=columns2)
 
     # Make all necessary directories
-    second_round_path = opts.output_dir + '/{}_{}_round1'.format(os.path.basename(opts.main_dir),opts.tag)
+    second_round_path = opts.output_dir + '/{}_{}_round1'.format(os.path.basename(os.path.normpath(opts.main_dir)),opts.tag)
     try:
         os.makedirs(second_round_path+'/plots')
         os.makedirs(second_round_path+'/metafiles')
@@ -155,15 +155,14 @@ def write_out_second_revision_tar_file(opts):
     
             t1_t2_meta_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_t2_df['png'])]       
             t1_t2_classified_df = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])]
-         
             # Copy over metafile and png files to respective directories
             log.info("Copying over meta and png files to {}".format(second_round_path))
-            shutil.copyfile(os.path.dirname(classified_file)+'/'+t1_t2_meta_df['metafile_path'].values[0], 
-                                            opts.output_dir+'/{}_{}_round1/metafiles/{}'.format(os.path.basename(opts.main_dir), opts.tag,                                              os.path.basename(t1_t2_meta_df['metafile_path'].values[0])))   
-    
+            for val in t1_t2_meta_df['metafile_path'].values:            
+                shutil.copyfile(os.path.dirname(classified_file)+'/'+ val, 
+                                            opts.output_dir+'/{}_{}_round1/metafiles/{}'.format(os.path.basename(os.path.normpath(opts.main_dir)), opts.tag, os.path.basename(val)))       
             for val in t1_t2_meta_df['png_path'].values:
                 shutil.copyfile(os.path.dirname(classified_file)+'/'+val,                                
-                                opts.output_dir+'/{}_{}_round1/plots/{}'.format(os.path.basename(opts.main_dir), opts.tag,                                                 os.path.basename(val)))
+                                opts.output_dir+'/{}_{}_round1/plots/{}'.format(os.path.basename(os.path.normpath(opts.main_dir)), opts.tag,                                                 os.path.basename(val)))
             
             t1_t2_all_classified_df = t1_t2_all_classified_df.append(t1_t2_classified_df, ignore_index=True)            
             t1_t2_all_meta_df = t1_t2_all_meta_df.append(t1_t2_meta_df, ignore_index=True)
@@ -175,7 +174,7 @@ def write_out_second_revision_tar_file(opts):
     t1_t2_all_classified_df.to_csv(second_round_path+'/{}_classified1.csv'.format(opts.tag), index=False)
     
     # Tar up the directory
-    tar_name = "{}_{}_round1_T1_T2.tar.gz".format(os.path.basename(opts.main_dir), opts.tag)
+    tar_name = "{}_{}_round1_T1_T2.tar.gz".format(os.path.basename(os.path.normpath(opts.main_dir)), opts.tag)
     make_tarfile(opts.output_dir, second_round_path, tar_name)    
 
     
@@ -203,25 +202,25 @@ if __name__ == "__main__":
     if opts.output_dir is None:
         log.debug("Output directory not specified")
         log.info("Files will be written in main specified directory")
-        opts.output_dir = opts.main_dir
+        opts.output_dir = os.path.normpath(opts.main_dir)
 
     t1_t2_df = write_t1_t2_beams(opts)
     if opts.sep_csv:
         # Write out T1,T2 cand beam path+names
         log.info("Writing out beams for {} T1/T2 cands in total found in {}".format(t1_t2_df.shape[0], opts.main_dir))
-        t1_t2_df.to_csv('{}/{}_{}_keep_T1_T2_cands.csv'.format(opts.output_dir, os.path.basename(opts.main_dir), opts.tag), index = False)
+        t1_t2_df.to_csv('{}/{}_{}_keep_T1_T2_cands.csv'.format(opts.output_dir, os.path.basename(os.path.normpath(opts.main_dir)), opts.tag), index = False)
     
     
     kp_df = write_known_pulsar_beams(opts) 
     if opts.sep_csv:
         # Write out known pulsar beam path+names
         log.info("Writing out beams for {} known pulsar cands in total found in {}".format(kp_df.drop_duplicates().shape[0], opts.main_dir))
-        kp_df.drop_duplicates().to_csv('{}/{}_{}_keep_pulsar_cands.csv'.format(opts.output_dir, os.path.basename(opts.main_dir), opts.tag), index = False)
+        kp_df.drop_duplicates().to_csv('{}/{}_{}_keep_pulsar_cands.csv'.format(opts.output_dir, os.path.basename(os.path.normpath(opts.main_dir)), opts.tag), index = False)
 
     # Write out a csv file for beams to be retained
     all_beams_df = t1_t2_df.append(kp_df, ignore_index=True)
     log.info("Writing out beams for all known pulsar and T1/T2 cands (Total: {}) found in {}".format(all_beams_df.drop_duplicates().shape[0], opts.main_dir))
-    all_beams_df.drop_duplicates().to_csv('{}/{}_{}_keep_beams.csv'.format(opts.output_dir, os.path.basename(opts.main_dir), opts.tag), index = False)
+    all_beams_df.drop_duplicates().to_csv('{}/{}_{}_keep_beams.csv'.format(opts.output_dir, os.path.basename(os.path.normpath(opts.main_dir)), opts.tag), index = False)
   
     # Write out a second revision file
     if opts.second_revision:

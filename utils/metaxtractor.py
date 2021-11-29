@@ -307,7 +307,7 @@ def generate_info_from_meta(opts):
 
                 best_beam = 'cfbf00{:03d}'.format(psr_idx)
                 best_beams.append(best_beam) 
-                best_psrs.append(psr[0]) 
+                best_psrs.append(psr[0]+'; ATNF') 
 
                 # Use geometric formula directly since contains point function is failing. 
                 if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
@@ -369,7 +369,7 @@ def generate_info_from_meta(opts):
 
                     best_beam = 'cfbf00{:03d}'.format(psr_idx)
                     best_beams.append(best_beam) 
-                    best_psrs.append(psr['PSR']) 
+                    best_psrs.append(psr['PSR']+'; '+psr['Survey']) 
 
                     if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
                         log.info("{} is within the {} beam region".format(psr['PSR'], best_beam))

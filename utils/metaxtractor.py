@@ -75,10 +75,7 @@ def convert_equatorial_coordinate_to_pixel(equatorial_coordinates, bore_sight, u
 
     wcs_properties = wcs.WCS(naxis=2)
     wcs_properties.wcs.crpix = [0, 0]
-    if utc_time < Time('2021-10-05T00:00:00'):
-        wcs_properties.wcs.cdelt = [step, step]
-    else:
-        wcs_properties.wcs.cdelt = [-step, step]
+    wcs_properties.wcs.cdelt = [step, step]
     wcs_properties.wcs.crval = [bore_sight.ra.deg,bore_sight.dec.deg]
     wcs_properties.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
@@ -265,8 +262,11 @@ def generate_info_from_meta(opts):
     # Beam shapes    
     beam_width = 2.0*float(literal_eval(all_info['beamshape'])['x'])
     beam_height = 2.0*float(literal_eval(all_info['beamshape'])['y'])
-    beam_angle = literal_eval(all_info['beamshape'])['angle']
-    
+    if utc_time < Time('2021-10-05T00:00:00'):
+        beam_angle =  float(literal_eval(all_info['beamshape'])['angle'])
+    else: 
+        beam_angle = -1.0*float(literal_eval(all_info['beamshape'])['angle']) # Sign change in FBFUSE tiling rollout
+
     # Get all key value pairs for beams and sort them based on beam number
     vals = list(all_info['beams'].values())
     keys = list(all_info['beams'].keys())
@@ -281,7 +281,7 @@ def generate_info_from_meta(opts):
         columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
 
-        q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius))
+        q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,2.0*incoherent_beam_radius))
         pulsar_list = np.array((q.table['JNAME','RAJ','DECJ','P0','DM']))        
 
         log.info("{} known pulsars found within the incoherent beam".format(len(pulsar_list)))
@@ -338,9 +338,9 @@ def generate_info_from_meta(opts):
              
     elif opts.kp_catalogue == 'PSS':
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
-        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
+        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Boresight separation (deg)', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
-        command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, incoherent_beam_radius)
+        command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
         if 'No pulsars' in str(kp_out): 
             log.info("No pulsars from PSS in the incoherent beam region")
@@ -387,7 +387,7 @@ def generate_info_from_meta(opts):
                      within_flag = 'N'
                      neighbour_beam_list="None"
                 
-                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], best_beam, within_flag, neighbour_beam_list]          
+                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], psr['Separation (deg)'],best_beam, within_flag, neighbour_beam_list]          
 
             kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
             
@@ -511,7 +511,7 @@ def generate_info_from_meta(opts):
     #plotting ornaments
     ax.set_xlabel('Right Ascension (Degrees)')
     ax.set_ylabel('Declination (Degrees)')
-    ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
+    ax.set_title("Pointing: {}, UTC: {}, Elevation: {}".format(pointing_name, utc_time, elv_value))
     ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
     ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
     plt.legend(prop={"size":6})

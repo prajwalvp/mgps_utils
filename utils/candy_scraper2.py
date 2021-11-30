@@ -192,6 +192,8 @@ if __name__ == "__main__":
     #parser.add_option('--known_psr_filter',type=str, help='Filter the non boresight beams to ensure best SNR/position beam retained', dest='filter_psr)
     opts, args = parser.parse_args()
 
+
+
     if opts.main_dir is None:
         log.info("Pointing directory not specified!")
         sys.exit(0) 
@@ -204,6 +206,12 @@ if __name__ == "__main__":
         log.info("Files will be written in main specified directory")
         opts.output_dir = os.path.normpath(opts.main_dir)
 
+    # Check for tilda in main dir and output dir
+    if '~' in opts.output_dir:
+        opts.output_dir = os.path.expanduser(opts.output_dir) 
+    if '~' in opts.main_dir:
+        opts.main_dir = os.path.expanduser(opts.main_dir)
+ 
     t1_t2_df = write_t1_t2_beams(opts)
     if opts.sep_csv:
         # Write out T1,T2 cand beam path+names

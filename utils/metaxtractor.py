@@ -2,6 +2,7 @@
 import os
 import sys
 import math
+import requests
 import glob
 import getpass
 import logging
@@ -209,7 +210,7 @@ def write_keep_beams_csv(opts, best_beams, best_psrs):
         keep_beams_df.loc[i] = [filterbank_path+'/'+best_beams[i], opts.username, opts.survey_name + ' KNOWN PSR ({})'.format(psr)]
    
     if keep_beams_df.shape[0] > 0: 
-        keep_beams_df.to_csv("{}/{}_keep_beams_suggested.csv".format(opts.output_path, all_info['boresight'].split(',')[0]), index=False)
+        keep_beams_df.to_csv("{}/{}_keep_beams_suggested.csv".format(opts.output_path, opts.output_name), index=False)
     else:
         log.info("No beams suggested to be retained")
                 
@@ -244,6 +245,11 @@ def generate_info_from_meta(opts):
     log.info("Pointing Name: {}".format(pointing_name))
     log.info("Observed UTC Time: {}".format(utc_time))
 
+    
+    # Assign output name if None 
+    if isinstance(opts.output_name, type(None)):
+        opts.output_name = pointing_name + '_' + utc_time     
+
     # Boresight
     boresight_ra = all_info['boresight'].split(',')[-2]     
     boresight_dec = all_info['boresight'].split(',')[-1]
@@ -273,6 +279,16 @@ def generate_info_from_meta(opts):
     vals = [x for _, x in sorted(zip(keys,vals))]
     keys = sorted(keys)
 
+    # Check if internet connection is working, if not switch to ATNF and use database
+
+    try:
+        requests.get('https://pulsar.cgca-hub.org/search', timeout=5)
+        internet=1
+        log.info("System is online")
+    except (requests.ConnectionError, requests.Timeout) as exception:
+        log.info("System is offline. Will use local PSRCAT database")
+        internet=0
+        opts.kp_catalogue = 'ATNF'
 
     # Add known pulsar list based on ATNF or Pulsar survey scraper
 
@@ -281,7 +297,13 @@ def generate_info_from_meta(opts):
         columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
 
-        q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius))
+        if internet==1: 
+            q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius))
+        else:
+            if isinstance(opts.psrcat_path, type(None)):
+                raise Exception('Local PSRCAT path missing. This should be specified!')
+            q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius), loadfromdb=opts.psrcat_path)
+            
         pulsar_list = np.array((q.table['JNAME','RAJ','DECJ','P0','DM']))        
 
         log.info("{} known pulsars found within the incoherent beam".format(len(pulsar_list)))
@@ -330,7 +352,7 @@ def generate_info_from_meta(opts):
 
             kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], best_beam, within_flag, neighbour_beam_list]          
 
-        kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
+        kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, opts.output_name)) 
 
         if opts.keep_beams:
             log.info("Writing out a file with beams to keep")
@@ -389,7 +411,7 @@ def generate_info_from_meta(opts):
                 
                 kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], best_beam, within_flag, neighbour_beam_list]          
 
-            kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
+            kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, opts.output_name)) 
             
             if opts.keep_beams:
                 log.info("Writing out a file with beams to keep")
@@ -398,11 +420,11 @@ def generate_info_from_meta(opts):
     # Output list of pulsars based on separate unpublished spreadsheets
     if opts.unpublished_flag:
         log.info("Checking unpublished spreadsheets for known pulsars..")       
-        if isinstance (opts.sheet_id, type(None)):
-            raise Exception("Unique Sheet ID for spreadsheet not specified!") 
+        if isinstance (opts.htru_unpublished_path, type(None)):
+            raise Exception("HTRU unpublished csv path not specified!") 
         Columns = ['PSR','P(ms)','DM','Separation (deg)']
-        unpublished_list = pd.DataFrame(columns=Columns) 
-        unpublished_df = pd.read_csv('https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}'.format(opts.sheet_id, opts.sheet_name))
+        unpublished_list = pd.DataFrame(columns=Columns)
+        unpublished_df = pd.read_csv(opts.htru_unpublished_path)  
         gls = unpublished_df['gl (deg) ']
         gbs = unpublished_df['gb (deg) ']
         unpublished_psr_coords = SkyCoord(gls*u.deg, gbs*u.deg, frame='galactic').transform_to('icrs')
@@ -424,8 +446,8 @@ def generate_info_from_meta(opts):
         if unpublished_list.empty:
             log.info("No unpublished pulsars within the survey beam")
         else:
-            unpublished_list.to_csv('{}/{}_unpublished_known_psrs.csv'.format(opts.output_path, pointing_name))          
-            log.info("{} Unpublished psrs found and written to {}_unpublished_known_psrs.csv".format(len(unpublished_list.index), pointing_name))
+            unpublished_list.to_csv('{}/{}_unpublished_known_psrs.csv'.format(opts.output_path, opts.output_name))          
+            log.info("{} Unpublished psrs found and written to {}_unpublished_known_psrs.csv".format(len(unpublished_list.index), opts.output_name))
 
     # Get Fermi sources in region and plot with r95 ellipse
     if opts.fermi_flag: 
@@ -434,8 +456,8 @@ def generate_info_from_meta(opts):
         if fermi_source_df.empty:
             log.info("No Fermi associations within survey beam region")
         else:
-            fermi_source_df.to_csv('{}/{}_Fermi_associations.csv'.format(opts.output_path, pointing_name)) 
-            log.info("{} Fermi associations found and written to {}_Fermi_associations.csv".format(len(fermi_source_df.index), pointing_name))
+            fermi_source_df.to_csv('{}/{}_Fermi_associations.csv'.format(opts.output_path, opts.output_name)) 
+            log.info("{} Fermi associations found and written to {}_Fermi_associations.csv".format(len(fermi_source_df.index), opts.output_name))
         for index,row in fermi_source_df.iterrows():
             fermi_coords = SkyCoord(frame='icrs',ra = row[1], dec=row[2], unit=(u.deg, u.deg))
             pixel_fermi_coordinates = convert_equatorial_coordinate_to_pixel(fermi_coords,boresight_coords, time)
@@ -515,28 +537,30 @@ def generate_info_from_meta(opts):
     ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
     ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
     plt.legend(prop={"size":6})
-    plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name), dpi=400)
-
+    plt.savefig('{}/{}.meta.png'.format(opts.output_path, opts.output_name), dpi=400)
     log.info("Output path: {}".format(opts.output_path))
 
 if __name__ =="__main__":
     # Select options
     parser = optparse.OptionParser()
-    parser.add_option('--meta_path', type=str, help = 'Path to meta file (Full path)', dest='meta')
+    parser.add_option('--meta_path', type=str, help = 'Path to meta file (Full path)', dest='meta', default=None)
     parser.add_option('--check_unpublished', type=int, help = 'Flag for checking unpublished sources (Default: 0)', dest='unpublished_flag',default=0)
-    parser.add_option('--sheet_id', type=str, help = 'Unique spreadheet ID', dest='sheet_id',default=None)
-    parser.add_option('--sheet_name', type=str, help = 'Name of sheet of unpublished pulsars (Default: reprocessing_discoveries)', dest='sheet_name',default='reprocessing_discoveries')
     parser.add_option('--check_fermi',type=int, help='Check for possible Fermi associations (Default: 1)',dest='fermi_flag',default=1)
     parser.add_option('--fits_file',type=str, help='Full path for Fermi fits file (Defaults to Fermi fits file in current working directory)',dest='fits_file',default=None)
-    parser.add_option('--known_pulsar',type=str, help='Cross match with known pulsar list as specified. Options: ATNF, PSS',dest='kp_catalogue',default='ATNF')
+    parser.add_option('--known_pulsar',type=str, help='Cross match with known pulsar list as specified. Options: ATNF, PSS',dest='kp_catalogue',default='PSS')
     parser.add_option('--user_coordinate',type=str, help=' Plot user specified coordinates  e.g. 12:08 -59:36',dest='user_coords',default=None)
     parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees (Defaults to survey beam radius for MGPS-L)',dest='beam_radius', default=survey_beam_radius)
     parser.add_option('--username',type=str, help='Username of person running (Defaults to username of local machine)',dest='username', default=getpass.getuser())
     parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L) ; Default is MGPS-L', dest='survey_name',default='MGPS-L')
     parser.add_option('--output_path',type=str, help='Path to store output files (Defaults to current working directory)',dest='output_path', default=os.getcwd())
+    parser.add_option('--psrcat_path',type=str, help='Path to local version of PSRCAT database. Will be used when system is offline', dest='psrcat_path', default=None)
+    parser.add_option('--unpublished_path',type=str, help='Path to local version of HTRU unpublished csv. Will be used when system is offline', dest='htru_unpublished_path')
     parser.add_option('--keep_beams',type=int, help='Flag to write out list of beams to keep based on expected known pulsars (Defaults to 1)',dest='keep_beams', default=1)
+    parser.add_option('-O',type=str, help='Output names of files',dest='output_name', default=None)
     opts, args = parser.parse_args()
 
+    if isinstance (opts.meta, type(None)):
+        raise Exception("Meta path not specified.")
     # Generate all info for pointing
     generate_info_from_meta(opts)
               

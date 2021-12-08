@@ -76,10 +76,7 @@ def convert_equatorial_coordinate_to_pixel(equatorial_coordinates, bore_sight, u
 
     wcs_properties = wcs.WCS(naxis=2)
     wcs_properties.wcs.crpix = [0, 0]
-    if utc_time < Time('2021-10-05T00:00:00'):
-        wcs_properties.wcs.cdelt = [step, step]
-    else:
-        wcs_properties.wcs.cdelt = [-step, step]
+    wcs_properties.wcs.cdelt = [step, step]
     wcs_properties.wcs.crval = [bore_sight.ra.deg,bore_sight.dec.deg]
     wcs_properties.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 
@@ -272,7 +269,11 @@ def generate_info_from_meta(opts):
     # Beam shapes    
     beam_width = 2.0*float(literal_eval(all_info['beamshape'])['x'])
     beam_height = 2.0*float(literal_eval(all_info['beamshape'])['y'])
-    beam_angle = literal_eval(all_info['beamshape'])['angle']
+    
+    if utc_time < Time('2021-10-05T00:00:00'):
+        beam_angle =  float(literal_eval(all_info['beamshape'])['angle'])
+    else: 
+        beam_angle = -1.0*float(literal_eval(all_info['beamshape'])['angle']) # Sign change in FBFUSE tiling rollout
     
     # Get all key value pairs for beams and sort them based on beam number
     vals = list(all_info['beams'].values())

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import os
 import sys
 import math
@@ -151,7 +151,8 @@ def get_Fermi_association(opts,boresight_coords):
     """
     # Read necessary info from FITS file 
     if isinstance(opts.fits_file, type(None)):
-        fgl4_fits = fits.open('{}/4FGL_DR2_Ppsr.fits'.format(os.getcwd()))[1].data 
+        #fgl4_fits = fits.open('{}/4FGL_DR2_Ppsr.fits'.format(os.getcwd()))[1].data 
+        fgl4_fits = fits.open('{}/utils/4FGL_DR2_Ppsr.fits'.format(os.environ['MGPS_UTILS']))[1].data 
     else:
         fgl4_fits = fits.open(opts.fits_file)[1].data 
 
@@ -362,7 +363,7 @@ def generate_info_from_meta(opts):
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
         columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
-        command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, incoherent_beam_radius)
+        command = "get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
         if 'No pulsars' in str(kp_out): 
             log.info("No pulsars from PSS in the incoherent beam region")

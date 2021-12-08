@@ -233,7 +233,7 @@ def generate_info_from_meta(opts):
 
 
     # Check if pointing name files already exist and skip them
-    if os.path.isfile('{}/{}.png'.format(opts.output_path, pointing_name)):
+    if os.path.isfile('{}/{}_{}.meta.png'.format(opts.output_path, pointing_name, utc_time)):
         log.info("Info about {} already exists in output path".format(pointing_name))
         return None 
         
@@ -515,7 +515,7 @@ def generate_info_from_meta(opts):
     ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
     ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
     plt.legend(prop={"size":6})
-    plt.savefig('{}/{}.png'.format(opts.output_path, pointing_name), dpi=400)
+    plt.savefig('{}/{}_{}.meta.png'.format(opts.output_path, pointing_name, utc_time), dpi=400)
 
     log.info("Output path: {}".format(opts.output_path))
 

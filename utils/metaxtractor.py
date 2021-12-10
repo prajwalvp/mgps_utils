@@ -227,8 +227,12 @@ def write_keep_beams_csv(opts, best_beams, best_psrs):
     for i,psr in enumerate(best_psrs):
         keep_beams_df.loc[i] = [filterbank_path+'/'+best_beams[i], opts.username, opts.survey_name + ' KNOWN PSR ({})'.format(psr)]
    
-    if keep_beams_df.shape[0] > 0: 
-        keep_beams_df.to_csv("{}/{}_keep_beams_suggested.csv".format(opts.output_path, all_info['boresight'].split(',')[0]), index=False)
+    if keep_beams_df.shape[0] > 0:
+        csv_full_path = "{}/{}_keep_beams_suggested.csv".format(opts.output_path, all_info['boresight'].split(',')[0])
+        if os.path.isfile(csv_full_path): 
+            keep_beams_df.to_csv(csv_full_path, mode='a', header=False,  index=False)
+        else:
+            keep_beams_df.to_csv(csv_full_path, index=False)
     else:
         log.info("No beams suggested to be retained")
                 
@@ -480,14 +484,26 @@ def generate_info_from_meta(opts):
         else:
             fermi_rq_df.to_csv('{}/{}_Fermi_radio_quiet_pulsars.csv'.format(opts.output_path, pointing_name))      
             log.info("{} Fermi radio quiet pulsars found and written to {}_Fermi_radio_quiet_pulsars.csv".format(len(fermi_rq_df.index), pointing_name))
+            pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(coherent_beam_coords, boresight_coords, time)
+            best_psrs=[]
+            best_beams=[] 
             for index,row in fermi_rq_df.iterrows():
                 fermi_coords = SkyCoord(frame='icrs',ra = row[1], dec=row[2], unit=(u.deg, u.deg))
                 pixel_fermi_coordinates = convert_equatorial_coordinate_to_pixel(fermi_coords,boresight_coords, time)
                 pixel_fermi_ra = boresight_ra_deg + pixel_fermi_coordinates[0][0]
                 pixel_fermi_dec = boresight_dec_deg + pixel_fermi_coordinates[0][1]
                 ax.plot(pixel_fermi_ra, pixel_fermi_dec, '*',label=row[0]+'(q)',markersize=7.5)
-     
-
+                psr_idx, psr_d2d, psr_d3d = fermi_coords.match_to_catalog_sky(coherent_beam_coords) 
+                best_ellipse = Ellipse(xy=(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='grey', lw=1.5)
+                ax.add_patch(best_ellipse)
+                best_beam = 'cfbf00{:03d}'.format(psr_idx)
+                best_beams.append(best_beam) 
+                best_psrs.append(row[0]+'; Fermi q') 
+            
+            if opts.keep_beams:
+                log.info("Appending/writing to a file with beams to keep")
+                write_keep_beams_csv(opts, best_beams, best_psrs)
+ 
 
     # Add ellipses
     for i in range(len(vals)):
@@ -547,6 +563,8 @@ def generate_info_from_meta(opts):
     total_area = np.pi*0.25*beam_width*beam_height*no_of_beams
     survey_beam_fill_factor = (total_area/survey_beam_area)/0.91
     
+    
+
 
     #plotting ornaments
     ax.set_xlabel('Right Ascension (Degrees)')

@@ -141,6 +141,28 @@ def get_pixel_coherent_beam_coordinates(beam_coords, boresight_coords, utc_time)
     return pixel_beam_ras, pixel_beam_decs 
 
 
+def get_Fermi_rq_pulsars(opts, boresight_coords):
+    """
+    Write out Fermi radio quiet pulsars in field
+    """
+    try:
+        rq_df = pd.read_csv('{}/Fermi_radio_quiet_pulsars_public.csv'.format(os.getcwd()))
+    except Exception as error:
+        return None
+  
+    fermi_rq_pos = SkyCoord(rq_df['RA (deg)'], rq_df['DEC (deg)'], unit=u.deg)
+    columns = ['Name', 'RA (deg)', 'DEC (deg)', 'P(ms)', 'Edot', 'Separation(deg)']
+    fermi_rq_df = pd.DataFrame(columns=columns)    
+    
+    fermi_rq_cnt=0
+    for i,pos in enumerate(fermi_rq_pos):
+        if pos.separation(boresight_coords).deg <=survey_beam_radius*1.05: 
+            fermi_rq_df.loc[fermi_rq_cnt] = [rq_df['Name'][i].strip('PSR '),  pos.ra.deg, pos.dec.deg, rq_df['P (ms)'][i], rq_df['Edot'][i], pos.separation(boresight_coords).deg]          
+            fermi_rq_cnt+=1
+             
+    return fermi_rq_df
+    
+
 def get_Fermi_association(opts,boresight_coords):
     """
     Write out the possible Fermi associations
@@ -447,6 +469,24 @@ def generate_info_from_meta(opts):
                 ax.add_patch(ellipse)
             else:
                 log.info("{} is an extended Fermi source. R95 region is invalid".format(row[0]))
+        
+        # Get Fermi radio quiet sources in field.
+        log.info("Checking for Fermi radio quiet pulsars...")
+        fermi_rq_df = get_Fermi_rq_pulsars(opts, boresight_coords)
+        if isinstance(fermi_rq_df, type(None)):
+            log.info("No Radio quiet csv file found. Ignoring checking") 
+        elif fermi_rq_df.empty:
+            log.info("No Fermi radio quiet pulsars within survey beam region")
+        else:
+            fermi_rq_df.to_csv('{}/{}_Fermi_radio_quiet_pulsars.csv'.format(opts.output_path, pointing_name))      
+            log.info("{} Fermi radio quiet pulsars found and written to {}_Fermi_radio_quiet_pulsars.csv".format(len(fermi_rq_df.index), pointing_name))
+            for index,row in fermi_rq_df.iterrows():
+                fermi_coords = SkyCoord(frame='icrs',ra = row[1], dec=row[2], unit=(u.deg, u.deg))
+                pixel_fermi_coordinates = convert_equatorial_coordinate_to_pixel(fermi_coords,boresight_coords, time)
+                pixel_fermi_ra = boresight_ra_deg + pixel_fermi_coordinates[0][0]
+                pixel_fermi_dec = boresight_dec_deg + pixel_fermi_coordinates[0][1]
+                ax.plot(pixel_fermi_ra, pixel_fermi_dec, '*',label=row[0]+'(q)',markersize=7.5)
+     
 
 
     # Add ellipses

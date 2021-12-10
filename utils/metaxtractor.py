@@ -142,6 +142,27 @@ def get_pixel_coherent_beam_coordinates(beam_coords, boresight_coords, utc_time)
     return pixel_beam_ras, pixel_beam_decs 
 
 
+def get_Fermi_rq_pulsars(opts, boresight_coords):
+    """
+    Write out Fermi radio quiet pulsars in field
+    """
+    try:
+        rq_df = pd.read_csv('{}/Fermi_radio_quiet_pulsars_public.csv'.format(os.getcwd()))
+    except Exception as error:
+        return None
+
+    fermi_rq_pos = SkyCoord(rq_df['RA (deg)'], rq_df['DEC (deg)'], unit=u.deg)
+    columns = ['Name', 'RA (deg)', 'DEC (deg)', 'P(ms)', 'Edot', 'Separation(deg)']
+    fermi_rq_df = pd.DataFrame(columns=columns)    
+
+    fermi_rq_cnt=0
+    for i,pos in enumerate(fermi_rq_pos):
+        if pos.separation(boresight_coords).deg <=survey_beam_radius*1.05: 
+            fermi_rq_df.loc[fermi_rq_cnt] = [rq_df['Name'][i].strip('PSR '),  pos.ra.deg, pos.dec.deg, rq_df['P (ms)'][i], rq_df['Edot'][i], pos.separation(boresight_coords).deg]          
+            fermi_rq_cnt+=1
+
+    return fermi_rq_df
+
 def get_Fermi_association(opts,boresight_coords):
     """
     Write out the possible Fermi associations
@@ -206,9 +227,13 @@ def write_keep_beams_csv(opts, best_beams, best_psrs):
         
     for i,psr in enumerate(best_psrs):
         keep_beams_df.loc[i] = [filterbank_path+'/'+best_beams[i], opts.username, opts.survey_name + ' KNOWN PSR ({})'.format(psr)]
-   
-    if keep_beams_df.shape[0] > 0: 
-        keep_beams_df.to_csv("{}/{}_keep_beams_suggested.csv".format(opts.output_path, opts.output_name), index=False)
+
+    if keep_beams_df.shape[0] > 0:
+        csv_full_path = "{}/{}_keep_beams_suggested.csv".format(opts.output_path, opts.output_name)
+        if os.path.isfile(csv_full_path): 
+            keep_beams_df.to_csv(csv_full_path, mode='a', header=False,  index=False)
+        else:
+            keep_beams_df.to_csv(csv_full_path, index=False)
     else:
         log.info("No beams suggested to be retained")
                 
@@ -234,8 +259,12 @@ def generate_info_from_meta(opts):
     pointing_name = all_info['boresight'].split(',')[0]
 
 
+    # Assign output name if None 
+    if isinstance(opts.output_name, type(None)):
+        opts.output_name = pointing_name + '_' + utc_time
+     
     # Check if pointing name files already exist and skip them
-    if os.path.isfile('{}/{}.png'.format(opts.output_path, pointing_name)):
+    if os.path.isfile('{}/{}.meta.png'.format(opts.output_path, opts.output_name)):
         log.info("Info about {} already exists in output path".format(pointing_name))
         return None 
         
@@ -244,9 +273,6 @@ def generate_info_from_meta(opts):
     log.info("Observed UTC Time: {}".format(utc_time))
 
     
-    # Assign output name if None 
-    if isinstance(opts.output_name, type(None)):
-        opts.output_name = pointing_name + '_' + utc_time     
 
     # Boresight
     boresight_ra = all_info['boresight'].split(',')[-2]     
@@ -282,7 +308,6 @@ def generate_info_from_meta(opts):
     keys = sorted(keys)
 
     # Check if internet connection is working, if not switch to ATNF and use database
-
     try:
         requests.get('https://pulsar.cgca-hub.org/search', timeout=5)
         internet=1
@@ -472,7 +497,35 @@ def generate_info_from_meta(opts):
             else:
                 log.info("{} is an extended Fermi source. R95 region is invalid".format(row[0]))
 
+        # Get Fermi radio quiet sources in field.
+        log.info("Checking for Fermi radio quiet pulsars...")
+        fermi_rq_df = get_Fermi_rq_pulsars(opts, boresight_coords)
+        if isinstance(fermi_rq_df, type(None)):
+            log.info("No Radio quiet csv file found. Ignoring checking") 
+        elif fermi_rq_df.empty:
+            log.info("No Fermi radio quiet pulsars within survey beam region")
+        else:
+            fermi_rq_df.to_csv('{}/{}_Fermi_radio_quiet_pulsars.csv'.format(opts.output_path, opts.output_name))      
+            log.info("{} Fermi radio quiet pulsars found and written to {}_Fermi_radio_quiet_pulsars.csv".format(len(fermi_rq_df.index), pointing_name))
+            pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(coherent_beam_coords, boresight_coords, time)
+            best_psrs=[]
+            best_beams=[] 
+            for index,row in fermi_rq_df.iterrows():
+                fermi_coords = SkyCoord(frame='icrs',ra = row[1], dec=row[2], unit=(u.deg, u.deg))
+                pixel_fermi_coordinates = convert_equatorial_coordinate_to_pixel(fermi_coords,boresight_coords, time)
+                pixel_fermi_ra = boresight_ra_deg + pixel_fermi_coordinates[0][0]
+                pixel_fermi_dec = boresight_dec_deg + pixel_fermi_coordinates[0][1]
+                ax.plot(pixel_fermi_ra, pixel_fermi_dec, '*',label=row[0]+'(q)',markersize=7.5)
+                psr_idx, psr_d2d, psr_d3d = fermi_coords.match_to_catalog_sky(coherent_beam_coords) 
+                best_ellipse = Ellipse(xy=(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='grey', lw=1.5)
+                ax.add_patch(best_ellipse)
+                best_beam = 'cfbf00{:03d}'.format(psr_idx)
+                best_beams.append(best_beam) 
+                best_psrs.append(row[0]+'; Fermi q') 
 
+            if opts.keep_beams:
+                log.info("Appending/writing to a file with beams to keep")
+                write_keep_beams_csv(opts, best_beams, best_psrs)
     # Add ellipses
     for i in range(len(vals)):
         if 'unset' in vals[i]:

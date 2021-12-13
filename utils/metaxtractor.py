@@ -595,6 +595,12 @@ if __name__ =="__main__":
     parser.add_option('--keep_beams',type=int, help='Flag to write out list of beams to keep based on expected known pulsars (Defaults to 1)',dest='keep_beams', default=1)
     opts, args = parser.parse_args()
 
+    # Expand user for all path arguments
+    opts.output_path = os.path.expanduser(opts.output_path) 
+    opts.meta = os.path.expanduser(opts.meta) 
+    if not isinstance (opts.fits_file, type(None)):
+        opts.meta = os.path.expanduser(opts.meta) 
+
     # Generate all info for pointing
     generate_info_from_meta(opts)
               

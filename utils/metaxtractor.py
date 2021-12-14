@@ -288,9 +288,9 @@ def generate_info_from_meta(opts):
     # Beam shapes    
     beam_width = 2.0*float(literal_eval(all_info['beamshape'])['x'])
     beam_height = 2.0*float(literal_eval(all_info['beamshape'])['y'])
-    if utc_time < Time('2021-10-05T00:00:00'):
+    if utc_time < Time('2021-10-05T00:00:00'): 
         beam_angle =  float(literal_eval(all_info['beamshape'])['angle'])
-    else: 
+    else:        
         beam_angle = -1.0*float(literal_eval(all_info['beamshape'])['angle']) # Sign change in FBFUSE tiling rollout
 
     # Get all key value pairs for beams and sort them based on beam number
@@ -536,16 +536,17 @@ def generate_info_from_meta(opts):
  
          
     # Add user beam radius    
-    if opts.beam_radius == survey_beam_radius:
+    if opts.beam_radius == survey_beam_radius and opts.plot_beams==1:
         user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
         ax.add_patch(user_circle)
-    else:
+    if opts.beam_radius != survey_beam_radius:
         user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Telescope beam')       
         ax.add_patch(user_circle)
 
     #Incoherent beam radius
-    incoherent_circle = Circle((boresight_ra_deg,boresight_dec_deg), incoherent_beam_radius, color='green',linestyle='--',linewidth=2.5,fill=False,label='Incoherent beam')
-    ax.add_patch(incoherent_circle)
+    if opts.plot_beams:
+        incoherent_circle = Circle((boresight_ra_deg,boresight_dec_deg), incoherent_beam_radius, color='green',linestyle='--',linewidth=2.5,fill=False,label='Incoherent beam')
+        ax.add_patch(incoherent_circle)
 
     ### Get elevation 
     
@@ -570,8 +571,9 @@ def generate_info_from_meta(opts):
     ax.set_xlabel('Right Ascension (Degrees)')
     ax.set_ylabel('Declination (Degrees)')
     ax.set_title("Pointing: {}, UTC: {}, Elevation: {}".format(pointing_name, utc_time, elv_value))
-    ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
-    ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
+    if opts.plot_beams:
+        ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
+        ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
     plt.legend(prop={"size":6})
     plt.savefig('{}/{}_{}.meta.png'.format(opts.output_path, pointing_name, utc_time), dpi=400)
 
@@ -593,6 +595,7 @@ if __name__ =="__main__":
     parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L) ; Default is MGPS-L', dest='survey_name',default='MGPS-L')
     parser.add_option('--output_path',type=str, help='Path to store output files (Defaults to current working directory)',dest='output_path', default=os.getcwd())
     parser.add_option('--keep_beams',type=int, help='Flag to write out list of beams to keep based on expected known pulsars (Defaults to 1)',dest='keep_beams', default=1)
+    parser.add_option('--plot_beams',type=int, help='Flag to indicate if survey and incoherent beams should be plotted (Defaults to 1)',dest='plot_beams', default=1)
     opts, args = parser.parse_args()
 
     # Expand user for all path arguments

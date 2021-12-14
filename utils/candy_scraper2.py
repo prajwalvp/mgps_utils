@@ -11,6 +11,7 @@ import pandas as pd
 from ast import literal_eval
 from astropy.coordinates import SkyCoord
 import astropy.units as u 
+import getpass
 
 """
 Updated version of candy_scraper.py which writes out beam lists with columns: filterbank_path, username, reason
@@ -247,7 +248,7 @@ if __name__ == "__main__":
     # Select options
     parser = optparse.OptionParser()
     parser.add_option('--name_tag', type=str, help = 'Name tag for searching classified files', dest='tag', default='autosave')
-    parser.add_option('--username', type=str, help = 'MGPS/TRAPUM login username', dest='username')
+    parser.add_option('--username', type=str, help = 'MGPS/TRAPUM login username; Default is local machine username', dest='username', default=getpass.getuser())
     parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L) ; Default is MGPS-L', dest='survey_name',default='MGPS-L')
     parser.add_option('--main_dir', type=str, help='Root directory where all pointing subdirectories are stored', dest='main_dir')
     parser.add_option('--output_dir',type=str, help='Output directory where csvs/tar files will be written out (Default is same as root directory specified)', dest='output_dir')

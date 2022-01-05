@@ -325,11 +325,11 @@ def generate_info_from_meta(opts):
         kp_df = pd.DataFrame(columns=columns)
 
         if internet==1: 
-            q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius))
+            q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,2.0*incoherent_beam_radius))
         else:
             if isinstance(opts.psrcat_path, type(None)):
                 raise Exception('Local PSRCAT path missing. This should be specified!')
-            q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,incoherent_beam_radius), loadfromdb=opts.psrcat_path)
+            q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,2.0*incoherent_beam_radius), loadfromdb=opts.psrcat_path)
             
         pulsar_list = np.array((q.table['JNAME','RAJ','DECJ','P0','DM']))        
 
@@ -356,7 +356,7 @@ def generate_info_from_meta(opts):
 
                 best_beam = 'cfbf00{:03d}'.format(psr_idx)
                 best_beams.append(best_beam) 
-                best_psrs.append(psr[0]) 
+                best_psrs.append(psr[0]+'; ATNF') 
 
                 # Use geometric formula directly since contains point function is failing. 
                 if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
@@ -389,7 +389,7 @@ def generate_info_from_meta(opts):
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
         columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
-        command = "get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, incoherent_beam_radius)
+        command = "get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
         if 'No pulsars' in str(kp_out): 
             log.info("No pulsars from PSS in the incoherent beam region")
@@ -418,7 +418,7 @@ def generate_info_from_meta(opts):
 
                     best_beam = 'cfbf00{:03d}'.format(psr_idx)
                     best_beams.append(best_beam) 
-                    best_psrs.append(psr['PSR']) 
+                    best_psrs.append(psr['PSR']+'; '+psr['Survey']) 
 
                     if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
                         log.info("{} is within the {} beam region".format(psr['PSR'], best_beam))
@@ -616,6 +616,14 @@ if __name__ =="__main__":
 
     if isinstance (opts.meta, type(None)):
         raise Exception("Meta path not specified.")
+
+    # Expand user for all path arguments
+    opts.output_path = os.path.expanduser(opts.output_path) 
+    opts.meta = os.path.expanduser(opts.meta) 
+    if not isinstance (opts.fits_file, type(None)):
+        opts.meta = os.path.expanduser(opts.meta) 
+
+
     # Generate all info for pointing
     generate_info_from_meta(opts)
               

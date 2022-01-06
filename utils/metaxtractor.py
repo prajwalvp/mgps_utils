@@ -141,7 +141,7 @@ def get_pixel_coherent_beam_coordinates(beam_coords, boresight_coords, utc_time)
     return pixel_beam_ras, pixel_beam_decs 
 
 
-def get_Fermi_rq_pulsars(opts, boresight_coords):
+def get_Fermi_rq_pulsars(opts, boresight_coords, pointing_name, utc_time, meta_output_path):
     """
     Write out Fermi radio quiet pulsars in field
     """
@@ -151,19 +151,19 @@ def get_Fermi_rq_pulsars(opts, boresight_coords):
         return None
   
     fermi_rq_pos = SkyCoord(rq_df['RA (deg)'], rq_df['DEC (deg)'], unit=u.deg)
-    columns = ['Name', 'RA (deg)', 'DEC (deg)', 'P(ms)', 'Edot', 'Separation(deg)']
+    columns = ['Name', 'RA (deg)', 'DEC (deg)', 'P(ms)', 'Edot', 'Separation(deg)', 'pointing_name','utc_obs', 'output_path']
     fermi_rq_df = pd.DataFrame(columns=columns)    
-    
+        
     fermi_rq_cnt=0
     for i,pos in enumerate(fermi_rq_pos):
         if pos.separation(boresight_coords).deg <=survey_beam_radius*1.05: 
-            fermi_rq_df.loc[fermi_rq_cnt] = [rq_df['Name'][i].strip('PSR '),  pos.ra.deg, pos.dec.deg, rq_df['P (ms)'][i], rq_df['Edot'][i], pos.separation(boresight_coords).deg]          
+            fermi_rq_df.loc[fermi_rq_cnt] = [rq_df['Name'][i].strip('PSR '),  pos.ra.deg, pos.dec.deg, rq_df['P (ms)'][i], rq_df['Edot'][i], pos.separation(boresight_coords).deg, pointing_name, utc_time, output_path]          
             fermi_rq_cnt+=1
              
     return fermi_rq_df
     
 
-def get_Fermi_association(opts,boresight_coords):
+def get_Fermi_association(opts,boresight_coords, pointing_name, utc_time, meta_output_path):
     """
     Write out the possible Fermi associations
     """
@@ -180,13 +180,13 @@ def get_Fermi_association(opts,boresight_coords):
     fgl4_r95_semi_minor = fgl4_fits.field('Conf_95_SemiMinor')
     
 
-    columns = ['Fermi Name', 'RA(deg)', 'DEC (deg)', 'P(psr)', 'r95_semi_major (deg)','r95_semi_minor (deg)', 'Separation (deg)']
+    columns = ['Fermi Name', 'RA(deg)', 'DEC (deg)', 'P(psr)', 'r95_semi_major (deg)','r95_semi_minor (deg)', 'Separation (deg)','pointing_name','utc_obs','output_path']
     fermi_source_df = pd.DataFrame(columns=columns)
     
     fermi_cnt = 0
     for i,pos in enumerate(fgl4_pos):
         if pos.separation(boresight_coords).deg <=survey_beam_radius*1.05: 
-            fermi_source_df.loc[fermi_cnt] = [fgl4_name[i], pos.ra.deg, pos.dec.deg, fgl4_val[i], fgl4_r95_semi_major[i], fgl4_r95_semi_minor[i], pos.separation(boresight_coords).deg]          
+            fermi_source_df.loc[fermi_cnt] = [fgl4_name[i], pos.ra.deg, pos.dec.deg, fgl4_val[i], fgl4_r95_semi_major[i], fgl4_r95_semi_minor[i], pos.separation(boresight_coords).deg, pointing_name, utc_time, meta_output_path]          
             fermi_cnt+=1
              
     return fermi_source_df
@@ -257,6 +257,10 @@ def generate_info_from_meta(opts):
     # Pointing name 
     pointing_name = all_info['boresight'].split(',')[0]
 
+    # Output path
+    meta_output_path = all_info['output_dir']  
+    
+
 
     # Check if pointing name files already exist and skip them
     if os.path.isfile('{}/{}_{}.meta.png'.format(opts.output_path, pointing_name, utc_time)):
@@ -304,7 +308,7 @@ def generate_info_from_meta(opts):
 
     if opts.kp_catalogue == 'ATNF':
         log.info("Querying the ATNF catalogue and retrieving all known pulsars")
-        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
+        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Closest beam(expected)','pointing_name', 'utc_obs', 'output_path', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
 
         q = QueryATNF(params=['JNAME','RAJ','DECJ','P0','DM'],circular_boundary=(boresight_ra,boresight_dec,2.0*incoherent_beam_radius))
@@ -354,9 +358,9 @@ def generate_info_from_meta(opts):
                 within_flag = 'N'
                 neighbour_beam_list = "None"
 
-            kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], best_beam, within_flag, neighbour_beam_list]          
+            kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], best_beam, pointing_name, utc_time, meta_output_path,  within_flag, neighbour_beam_list]          
 
-        kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
+        kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name), index=False) 
 
         if opts.keep_beams:
             log.info("Writing out a file with beams to keep")
@@ -364,7 +368,7 @@ def generate_info_from_meta(opts):
              
     elif opts.kp_catalogue == 'PSS':
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
-        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Boresight separation (deg)', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
+        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Boresight separation (deg)', 'Closest beam(expected)', 'pointing_name', 'utc_obs', 'output_path', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
         command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
@@ -413,9 +417,9 @@ def generate_info_from_meta(opts):
                      within_flag = 'N'
                      neighbour_beam_list="None"
                 
-                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], psr['Separation (deg)'],best_beam, within_flag, neighbour_beam_list]          
+                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], psr['Separation (deg)'], best_beam, pointing_name, utc_time, meta_output_path,  within_flag, neighbour_beam_list]          
 
-            kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name)) 
+            kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, pointing_name), index=False) 
             
             if opts.keep_beams:
                 log.info("Writing out a file with beams to keep")
@@ -426,7 +430,7 @@ def generate_info_from_meta(opts):
         log.info("Checking unpublished spreadsheets for known pulsars..")       
         if isinstance (opts.sheet_id, type(None)):
             raise Exception("Unique Sheet ID for spreadsheet not specified!") 
-        Columns = ['PSR','P(ms)','DM','Separation (deg)']
+        Columns = ['PSR','P(ms)','DM','Separation (deg)', 'pointing_name', 'utc_obs', 'output_path']
         unpublished_list = pd.DataFrame(columns=Columns) 
         unpublished_df = pd.read_csv('https://docs.google.com/spreadsheets/d/{}/gviz/tq?tqx=out:csv&sheet={}'.format(opts.sheet_id, opts.sheet_name))
         gls = unpublished_df['gl (deg) ']
@@ -438,7 +442,7 @@ def generate_info_from_meta(opts):
 
         for i,unpublished_psr_coord in enumerate(unpublished_psr_coords):
             if boresight_coords.separation(unpublished_psr_coord).deg < max_radius:
-                unpublished_list.loc[unpublished_cnt] = [unpublished_df['PSR Name '][i], unpublished_df['P(ms) '][i], unpublished_df['DM '][i],boresight_coords.separation(unpublished_psr_coord).deg]         
+                unpublished_list.loc[unpublished_cnt] = [unpublished_df['PSR Name '][i], unpublished_df['P(ms) '][i], unpublished_df['DM '][i],boresight_coords.separation(unpublished_psr_coord).deg, pointing_name, utc_time, meta_output_path]         
                 log.info("{} potentially within survey beam".format(unpublished_df['PSR Name '][i]))
                 unpublished_psr_pixel_coordinates = convert_equatorial_coordinate_to_pixel(unpublished_psr_coord, boresight_coords, time)
                 unpublished_psr_pixel_ra = boresight_ra_deg + unpublished_psr_pixel_coordinates[0][0]
@@ -450,17 +454,17 @@ def generate_info_from_meta(opts):
         if unpublished_list.empty:
             log.info("No unpublished pulsars within the survey beam")
         else:
-            unpublished_list.to_csv('{}/{}_unpublished_known_psrs.csv'.format(opts.output_path, pointing_name))          
+            unpublished_list.to_csv('{}/{}_unpublished_known_psrs.csv'.format(opts.output_path, pointing_name), index=False)          
             log.info("{} Unpublished psrs found and written to {}_unpublished_known_psrs.csv".format(len(unpublished_list.index), pointing_name))
 
     # Get Fermi sources in region and plot with r95 ellipse
     if opts.fermi_flag: 
         log.info("checking for Fermi associations...")
-        fermi_source_df = get_Fermi_association(opts, boresight_coords)
+        fermi_source_df = get_Fermi_association(opts, boresight_coords, pointing_name, utc_time, meta_output_path)
         if fermi_source_df.empty:
             log.info("No Fermi associations within survey beam region")
         else:
-            fermi_source_df.to_csv('{}/{}_Fermi_associations.csv'.format(opts.output_path, pointing_name)) 
+            fermi_source_df.to_csv('{}/{}_Fermi_associations.csv'.format(opts.output_path, pointing_name), index=False) 
             log.info("{} Fermi associations found and written to {}_Fermi_associations.csv".format(len(fermi_source_df.index), pointing_name))
         for index,row in fermi_source_df.iterrows():
             fermi_coords = SkyCoord(frame='icrs',ra = row[1], dec=row[2], unit=(u.deg, u.deg))
@@ -476,13 +480,13 @@ def generate_info_from_meta(opts):
         
         # Get Fermi radio quiet sources in field.
         log.info("Checking for Fermi radio quiet pulsars...")
-        fermi_rq_df = get_Fermi_rq_pulsars(opts, boresight_coords)
+        fermi_rq_df = get_Fermi_rq_pulsars(opts, boresight_coords, pointing_name, utc_time, meta_output_path)
         if isinstance(fermi_rq_df, type(None)):
             log.info("No Radio quiet csv file found. Ignoring checking") 
         elif fermi_rq_df.empty:
             log.info("No Fermi radio quiet pulsars within survey beam region")
         else:
-            fermi_rq_df.to_csv('{}/{}_Fermi_radio_quiet_pulsars.csv'.format(opts.output_path, pointing_name))      
+            fermi_rq_df.to_csv('{}/{}_Fermi_radio_quiet_pulsars.csv'.format(opts.output_path, pointing_name), index=False)      
             log.info("{} Fermi radio quiet pulsars found and written to {}_Fermi_radio_quiet_pulsars.csv".format(len(fermi_rq_df.index), pointing_name))
             pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(coherent_beam_coords, boresight_coords, time)
             best_psrs=[]

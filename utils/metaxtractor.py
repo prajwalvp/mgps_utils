@@ -457,7 +457,7 @@ def generate_info_from_meta(opts):
         unpublished_psr_coords = SkyCoord(gls*u.deg, gbs*u.deg, frame='galactic').transform_to('icrs')
         #ras = unpublished_df['RA(deg)']
         #decs = unpublished_df['DEC(deg)']
-        #unpublished_psr_coords = SkyCoord(ras*u.hourangle, decs*u.deg, frame='icrs')
+        #unpublished_psr_coords = SkyCoord(ras*u.deg, decs*u.deg, frame='icrs')
         max_radius = survey_beam_radius + 0.1166 # 7 arcmin for L-band at Parkes
         unpublished_cnt =0
 

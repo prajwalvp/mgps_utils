@@ -389,7 +389,7 @@ def generate_info_from_meta(opts):
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
         columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Closest beam(expected)','pointing_name', 'utc_time', 'output_path', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
-        command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
+        command = "get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
         if 'No pulsars' in str(kp_out): 
             log.info("No pulsars from PSS in the incoherent beam region")
@@ -592,6 +592,7 @@ def generate_info_from_meta(opts):
     ax.set_xlabel('Right Ascension (Degrees)')
     ax.set_ylabel('Declination (Degrees)')
     ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
+    ax.set_title("Pointing: {}, UTC: {}, Elevation: {}".format(pointing_name, utc_time, elv_value))
     ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
     ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
     plt.legend(prop={"size":6})

@@ -389,7 +389,7 @@ def generate_info_from_meta(opts):
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
         columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Closest beam(expected)','pointing_name', 'utc_time', 'output_path', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
-        command = "get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
+        command = "python get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
         if 'No pulsars' in str(kp_out): 
             log.info("No pulsars from PSS in the incoherent beam region")
@@ -436,7 +436,7 @@ def generate_info_from_meta(opts):
                      within_flag = 'N'
                      neighbour_beam_list="None"
                 
-                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], pointing_name, utc_time, meta_output_path, best_beam, within_flag, neighbour_beam_list]          
+                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], best_beam, pointing_name, utc_time, meta_output_path, within_flag, neighbour_beam_list]          
 
             kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, opts.output_name), index=False) 
             

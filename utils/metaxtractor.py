@@ -152,7 +152,7 @@ def get_Fermi_rq_pulsars(opts, boresight_coords, pointing_name, utc_time, meta_o
         return None
 
     fermi_rq_pos = SkyCoord(rq_df['RA (deg)'], rq_df['DEC (deg)'], unit=u.deg)
-    columns = ['Name', 'RA (deg)', 'DEC (deg)', 'P(ms)', 'Edot', 'Separation(deg)']
+    columns = ['Name', 'RA (deg)', 'DEC (deg)', 'P(ms)', 'Edot', 'Separation(deg)', 'Pointing', 'utc_obs', 'Output path']
     fermi_rq_df = pd.DataFrame(columns=columns)    
 
     fermi_rq_cnt=0

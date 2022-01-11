@@ -263,7 +263,8 @@ def generate_info_from_meta(opts):
 
     # Assign output name if None 
     if isinstance(opts.output_name, type(None)):
-        opts.output_name = pointing_name + '_' + utc_time
+        #opts.output_name = pointing_name + '_' + utc_time
+        opts.output_name = utc_time
      
     # Check if pointing name files already exist and skip them
     if os.path.isfile('{}/{}.meta.png'.format(opts.output_path, opts.output_name)):

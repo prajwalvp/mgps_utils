@@ -1,3 +1,4 @@
+import sys
 import math
 import subprocess
 import numpy as np
@@ -167,13 +168,19 @@ def check_discovery(meta, psr):
 
     best_beam = 'beam_%d'%(psr_idx)
     print "Best beam: %s"%(best_beam)
-    # Return closest 3 beams
+    # Return closest 5 beams
     all_seps = psr_coords.separation(coherent_beam_coords)
     all_beams_sorted = np.argsort(all_seps)
-    ellipse_2 = Ellipse(xy=(pixel_beam_ras[all_beams_sorted[1]], pixel_beam_decs[all_beams_sorted[1]]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', lw=1.5) 
-    ellipse_3 = Ellipse(xy=(pixel_beam_ras[all_beams_sorted[2]], pixel_beam_decs[all_beams_sorted[2]]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', lw=1.5) 
+    ellipse_2 = Ellipse(xy=(pixel_beam_ras[all_beams_sorted[1]], pixel_beam_decs[all_beams_sorted[1]]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc ='none', lw=1.5) 
+    ellipse_3 = Ellipse(xy=(pixel_beam_ras[all_beams_sorted[2]], pixel_beam_decs[all_beams_sorted[2]]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='none', lw=1.5) 
+    ellipse_4 = Ellipse(xy=(pixel_beam_ras[all_beams_sorted[3]], pixel_beam_decs[all_beams_sorted[3]]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc ='none', lw=1.5) 
+    ellipse_5 = Ellipse(xy=(pixel_beam_ras[all_beams_sorted[4]], pixel_beam_decs[all_beams_sorted[4]]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='none', lw=1.5) 
+    ellipse_6 = Ellipse(xy=(pixel_beam_ras[all_beams_sorted[5]], pixel_beam_decs[all_beams_sorted[5]]), width=beam_width, height=beam_height,angle = beam_angle, edgecolor='blue', fc='none', lw=1.5) 
     ax.add_patch(ellipse_2)
     ax.add_patch(ellipse_3)
+    ax.add_patch(ellipse_4)
+    ax.add_patch(ellipse_5)
+    ax.add_patch(ellipse_6)
 
     ax.set_xlabel('Right Ascension (Degrees)')
     ax.set_ylabel('Declination (Degrees)')
@@ -181,16 +188,20 @@ def check_discovery(meta, psr):
     ax.set_xlim(psr_pixel_ra - 3*beam_width, psr_pixel_ra + 3*beam_width)
     ax.set_ylim(psr_pixel_dec - 3*beam_width, psr_pixel_dec + 3*beam_width)
 
-    plt.savefig('%s_%s.png'%(utc_time, best_beam), dpi=300)
 
     # Return true if the pulsar is in any of the 3 closest beams
        
     if pointInEllipse(pixel_beam_ras[psr_idx], pixel_beam_decs[psr_idx], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
+       plt.savefig('%s_%s_detected.png'%(utc_time, best_beam), dpi=300)
        return True
     if pointInEllipse(pixel_beam_ras[all_beams_sorted[1]], pixel_beam_decs[all_beams_sorted[1]], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
+       plt.savefig('%s_%s_detected.png'%(utc_time, best_beam), dpi=300)
        return True
     if pointInEllipse(pixel_beam_ras[all_beams_sorted[2]], pixel_beam_decs[all_beams_sorted[2]], psr_pixel_ra, psr_pixel_dec, beam_width, beam_height, beam_angle):
+       plt.savefig('%s_%s_detected.png'%(utc_time, best_beam), dpi=300)
        return True
+    
+    plt.savefig('%s_%s_missed.png'%(utc_time, best_beam), dpi=300)
     return False    
 
     
@@ -207,7 +218,7 @@ pointing_decs=pointing_coords.dec.deg
 
 
 # Read the discovery file
-discoveries = np.loadtxt('soi.disc')
+discoveries = np.loadtxt(sys.argv[1])
 gls = discoveries[:,2]
 gbs = discoveries[:,3]
 psr_discovery_coords = SkyCoord(l=gls, b=gbs, frame='galactic', unit=(u.deg, u.deg)).transform_to('icrs') 
@@ -262,4 +273,6 @@ for psr in psr_remaining:
         else:
            print "Discovery outside the coherent beam region. Will be ignored" 
 
-
+with open('true_discoveries_%s.txt'%(sys.argv[1]), 'w') as f:
+    for item in my_list:
+        f.write("%s\n" % item)    

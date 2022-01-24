@@ -322,7 +322,7 @@ def generate_info_from_meta(opts):
 
     if opts.kp_catalogue == 'ATNF':
         log.info("Querying the ATNF catalogue and retrieving all known pulsars")
-        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Closest beam(expected)', 'pointing_name', 'utc_obs', 'output_path', 'Within beam?', 'Neighbour beams']
+        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'pointing_name', 'utc_obs', 'output_path', 'Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
 
         if internet==1: 
@@ -378,7 +378,7 @@ def generate_info_from_meta(opts):
                 within_flag = 'N'
                 neighbour_beam_list = "None"
 
-            kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], best_beam, pointing_name, utc_time, meta_output_path,  within_flag, neighbour_beam_list]          
+            kp_df.loc[i] = [psr[0], psr_coords.ra.deg, psr_coords.dec.deg, psr[3], psr[4], 'ATNF', pointing_name, utc_time, meta_output_path, best_beam, within_flag, neighbour_beam_list]          
 
         kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, opts.output_name), index=False) 
 
@@ -388,7 +388,7 @@ def generate_info_from_meta(opts):
              
     elif opts.kp_catalogue == 'PSS':
         log.info("Using the Pulsar survey scraper to retrieve known pulsars within incoherent beam")
-        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'Closest beam(expected)','pointing_name', 'utc_time', 'output_path', 'Within beam?', 'Neighbour beams']
+        columns = ['JNAME', 'RA(deg)', 'DEC (deg)', 'P0 (s)', 'DM', 'Survey', 'pointing_name', 'utc_time', 'output_path','Closest beam(expected)', 'Within beam?', 'Neighbour beams']
         kp_df = pd.DataFrame(columns=columns)
         command = "get_psrs_in_field.py --tag {}  --search_coordinates \"{} {}\" --search_radius {}".format(pointing_name, boresight_ra, boresight_dec, 2.0*incoherent_beam_radius)
         kp_out = subprocess.check_output(command, shell=True)
@@ -437,7 +437,7 @@ def generate_info_from_meta(opts):
                      within_flag = 'N'
                      neighbour_beam_list="None"
                 
-                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], best_beam, pointing_name, utc_time, meta_output_path, within_flag, neighbour_beam_list]          
+                kp_df.loc[index] = [psr['PSR'], psr_coords.ra.deg, psr_coords.dec.deg, psr['P (ms)'], psr['DM (pc cm^-3)'], psr['Survey'], pointing_name, utc_time, meta_output_path, best_beam, within_flag, neighbour_beam_list]          
 
             kp_df.to_csv('{}/{}_known_psrs.csv'.format(opts.output_path, opts.output_name), index=False) 
             

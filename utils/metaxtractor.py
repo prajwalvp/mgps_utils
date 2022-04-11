@@ -110,13 +110,14 @@ def get_coherent_beam_coords(meta):
     keys = list(all_info['beams'].keys())
     vals = [x for _, x in sorted(zip(keys,vals))]
     keys = sorted(keys)
-   
     
     # Convert beam coordinates into Astropy dataframe
     coherent_beams_ra = [] 
     coherent_beams_dec = [] 
-
+    
     for i in range(len(vals)):
+        if 'ifbf' in keys[i]:
+            continue
         if 'unset' in vals[i]:
             continue
         coherent_beams_ra.append(vals[i].split(',')[-2])
@@ -124,7 +125,6 @@ def get_coherent_beam_coords(meta):
     
     # Convert equatorial beam coordinates to pixel coordinates
     beam_coords = SkyCoord(frame='icrs', ra= coherent_beams_ra, dec= coherent_beams_dec, unit=(u.hour, u.deg))
-
     return beam_coords
 
 def get_pixel_coherent_beam_coordinates(beam_coords, boresight_coords, utc_time):

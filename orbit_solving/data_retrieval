@@ -1,0 +1,8 @@
+To query pulsar of interest directly from TRAPUM DB,
+
+1. Run following command
+select distinct filepath from data_product join pointing on data_product.pointing_id=pointing.id join target on pointing.target_id=target.id where source_name="JXXXX-XXXX"
+
+2. Save query into csv file and save files with cfbf00000 alone (NOte that this may not always be the case for initial observation pre localisation. This also does not include the discovery epoch)
+
+3. Run  

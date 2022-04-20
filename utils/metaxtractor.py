@@ -470,7 +470,7 @@ def generate_info_from_meta(opts):
                 unpublished_psr_pixel_coordinates = convert_equatorial_coordinate_to_pixel(unpublished_psr_coord, boresight_coords, time)
                 unpublished_psr_pixel_ra = boresight_ra_deg + unpublished_psr_pixel_coordinates[0][0]
                 unpublished_psr_pixel_dec = boresight_dec_deg + unpublished_psr_pixel_coordinates[0][1]
-                ax.plot(unpublished_psr_pixel_ra, unpublished_psr_pixel_dec,'*',label= unpublished_df['PSR Name '][i] +' (HTRU unpublished)',markersize=7.5)    
+                ax.plot(unpublished_psr_pixel_ra, unpublished_psr_pixel_dec,'*',label= unpublished_df['PSR Name '][i] +' (HTRU/PMPS unpublished)',markersize=7.5)    
                 telescope_beam = Circle((unpublished_psr_pixel_ra, unpublished_psr_pixel_dec), 0.1166666, linestyle='--',linewidth=2.5,fill=False,label='HTRU Parkes beam')
                 ax.add_patch(telescope_beam)
                 unpublished_cnt+=1

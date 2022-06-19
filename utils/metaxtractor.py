@@ -576,8 +576,10 @@ def generate_info_from_meta(opts):
     ax.set_ylabel('Declination (Degrees)')
     ax.set_title("Pointing: {}, UTC: {}, Elevation: {}".format(pointing_name, utc_time, elv_value))
     if opts.plot_beams:
-        ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
-        ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
+        #ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
+        ax.set_xlim(boresight_coords.ra.deg - survey_beam_radius, boresight_coords.ra.deg + survey_beam_radius)
+        #ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
+        ax.set_ylim(boresight_coords.dec.deg - survey_beam_radius, boresight_coords.dec.deg + survey_beam_radius)
     plt.legend(prop={"size":6})
     plt.savefig('{}/{}_{}.meta.png'.format(opts.output_path, pointing_name, utc_time), dpi=400)
 

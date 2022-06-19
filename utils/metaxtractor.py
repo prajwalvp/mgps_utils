@@ -263,8 +263,8 @@ def generate_info_from_meta(opts):
 
     # Assign output name if None 
     if isinstance(opts.output_name, type(None)):
-        #opts.output_name = pointing_name + '_' + utc_time
-        opts.output_name = utc_time
+        opts.output_name = pointing_name + '_' + utc_time
+        #opts.output_name = utc_time
      
     # Check if pointing name files already exist and skip them
     if os.path.isfile('{}/{}.meta.png'.format(opts.output_path, opts.output_name)):
@@ -595,9 +595,11 @@ def generate_info_from_meta(opts):
     ax.set_title("Pointing: %s, Elevation: %f deg., SBCF=%f "%(pointing_name, elv_value, survey_beam_fill_factor))
     ax.set_title("Pointing: {}, UTC: {}, Elevation: {}".format(pointing_name, utc_time, elv_value))
     ax.set_xlim(boresight_coords.ra.deg - incoherent_beam_radius, boresight_coords.ra.deg + incoherent_beam_radius)
+    #ax.set_xlim(boresight_coords.ra.deg - survey_beam_radius, boresight_coords.ra.deg + survey_beam_radius)
     ax.set_ylim(boresight_coords.dec.deg - incoherent_beam_radius, boresight_coords.dec.deg + incoherent_beam_radius)
+    #ax.set_ylim(boresight_coords.dec.deg - survey_beam_radius, boresight_coords.dec.deg + survey_beam_radius)
     plt.legend(prop={"size":6})
-    plt.savefig('{}/{}.meta.png'.format(opts.output_path, opts.output_name), dpi=400)
+    plt.savefig('{}/{}_{}.meta.png'.format(opts.output_path, pointing_name, opts.output_name), dpi=400)
     log.info("Output path: {}".format(opts.output_path))
 
 if __name__ =="__main__":

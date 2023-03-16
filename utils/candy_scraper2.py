@@ -92,7 +92,7 @@ def write_t1_t2_beams(opts):
         raise Exception("The total number of files with input tag does not match the total candidate.csv files! Please check for multiple redundant files")
     
     for i,classified_file in enumerate(classified_files):
-        print (i, classified_file)
+        #print (i, classified_file)
         log.info('Checking {}'.format(os.path.dirname(classified_file)))
         df = pd.read_csv(classified_file)
         t1_t2_df =  (df[(df['classification']=='T1_CAND') | (df['classification']=='T2_CAND')])
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('--name_tag', type=str, help = 'Name tag for searching classified files', dest='tag', default='autosave')
     parser.add_option('--username', type=str, help = 'MGPS/TRAPUM login username; Default is local machine username', dest='username', default=getpass.getuser())
-    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L) ; Default is MGPS-L', dest='survey_name',default='MGPS-L')
+    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. MMGPS-S, MMGPS-UHF) ; Default is MMGPS-S', dest='survey_name',default='MMGPS-S')
     parser.add_option('--main_dir', type=str, help='Root directory where all pointing subdirectories are stored', dest='main_dir')
     parser.add_option('--output_dir',type=str, help='Output directory where csvs/tar files will be written out (Default is same as root directory specified)', dest='output_dir')
     parser.add_option('--separate_csvs',type=int, help='Flag for writing out separate csvs for T1/T2 and pulsars (Default:0)', dest='sep_csv',default=0)

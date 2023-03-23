@@ -39,13 +39,6 @@ More features and suggestions are welcome!
 # MeerKAT location
 meerkat = EarthLocation(lat=-30.713*u.deg, lon=21.4*u.deg)
 
-# Beam dimensions
-parkes_beam_radius = 0.5*0.23333333 # beam width is 14 arcmin at L-Band for Parkes
-survey_beam_radius = 0.2488360131953144 # FWHM/sqrt(5) 
-#effelsberg_beam_radius
-survey_beam_area = np.pi*survey_beam_radius*survey_beam_radius
-parkes_beam_area = np.pi*parkes_beam_radius*parkes_beam_radius
-incoherent_beam_radius = math.sqrt(5)*survey_beam_radius
 
 
 ########### Matplotlib settings ##############################
@@ -157,7 +150,7 @@ def get_Fermi_rq_pulsars(opts, boresight_coords, pointing_name, utc_time, meta_o
 
     fermi_rq_cnt=0
     for i,pos in enumerate(fermi_rq_pos):
-        if pos.separation(boresight_coords).deg <=survey_beam_radius*1.05: 
+        if pos.separation(boresight_coords).deg <=opts.beam_radius*1.05: 
             fermi_rq_df.loc[fermi_rq_cnt] = [rq_df['Name'][i].strip('PSR '),  pos.ra.deg, pos.dec.deg, rq_df['P (ms)'][i], rq_df['Edot'][i], pos.separation(boresight_coords).deg, pointing_name, utc_time, meta_output_path]          
             fermi_rq_cnt+=1
 
@@ -186,7 +179,7 @@ def get_Fermi_association(opts, boresight_coords, pointing_name, utc_time, meta_
     
     fermi_cnt = 0
     for i,pos in enumerate(fgl4_pos):
-        if pos.separation(boresight_coords).deg <=survey_beam_radius*1.05: 
+        if pos.separation(boresight_coords).deg <=opts.beam_radius*1.05: 
             fermi_source_df.loc[fermi_cnt] = [fgl4_name[i], pos.ra.deg, pos.dec.deg, fgl4_val[i], fgl4_r95_semi_major[i], fgl4_r95_semi_minor[i], pos.separation(boresight_coords).deg, pointing_name, utc_time, meta_output_path]          
             fermi_cnt+=1
              
@@ -254,6 +247,8 @@ def generate_info_from_meta(opts):
     utc_time = all_info['utc_start'].replace(" ","T").replace("/","-")
     time = Time(utc_time)
 
+    # Incoherent beam radius
+    incoherent_beam_radius = math.sqrt(5)*opts.beam_radius
 
     # Pointing name 
     pointing_name = all_info['boresight'].split(',')[0]
@@ -347,7 +342,7 @@ def generate_info_from_meta(opts):
             ax.plot(psr_pixel_ra, psr_pixel_dec,'*',label=psr[0]+' (ATNF)',markersize=7.5)    
 
             # Check if pulsar within survey beam, gets closest beam + checks if psr within closest beam region + 3 closest beams
-            if psr_coords.separation(boresight_coords).deg <= survey_beam_radius*1.05:
+            if psr_coords.separation(boresight_coords).deg <= opts.beam_radius*1.05:
                 log.info("{} expected within the survey beam region".format(psr[0]))
                 pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(coherent_beam_coords, boresight_coords, time)
                 psr_idx, psr_d2d, psr_d3d = psr_coords.match_to_catalog_sky(coherent_beam_coords)
@@ -410,7 +405,7 @@ def generate_info_from_meta(opts):
                     parkes_telescope_beam = Circle((psr_pixel_ra, psr_pixel_dec), 0.1166666, linestyle='--',linewidth=2.5,fill=False,label='HTRU-S Low-latitude Parkes beam')
                     ax.add_patch(parkes_telescope_beam)
          
-                if psr_coords.separation(boresight_coords).deg <= survey_beam_radius*1.05:
+                if psr_coords.separation(boresight_coords).deg <= opts.beam_radius*1.05:
                     log.info("{} expected within the survey beam region".format(psr['PSR']))
                     pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(coherent_beam_coords, boresight_coords, time)
                     psr_idx, psr_d2d, psr_d3d = psr_coords.match_to_catalog_sky(coherent_beam_coords) 
@@ -459,7 +454,7 @@ def generate_info_from_meta(opts):
         #ras = unpublished_df['RA(deg)']
         #decs = unpublished_df['DEC(deg)']
         #unpublished_psr_coords = SkyCoord(ras*u.deg, decs*u.deg, frame='icrs')
-        max_radius = survey_beam_radius + 0.1166 # 7 arcmin for L-band at Parkes
+        max_radius = opts.beam_radius + 0.1166 # 7 arcmin for L-band at Parkes
         unpublished_cnt =0
 
 
@@ -561,12 +556,13 @@ def generate_info_from_meta(opts):
  
          
     # Add user beam radius    
-    if opts.beam_radius == survey_beam_radius:
-        user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
-        ax.add_patch(user_circle)
-    else:
-        user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Telescope beam')       
-        ax.add_patch(user_circle)
+    user_circle = Circle((boresight_ra_deg,boresight_dec_deg), opts.beam_radius, color='red',linestyle='--',linewidth=2.5,fill=False,label='Survey beam')
+    ax.add_patch(user_circle)
+
+    # Other extra things
+    parkes_beam_radius = 0.5*0.23333333 # beam width is 14 arcmin at L-Band for Parkes
+    survey_beam_area = np.pi*opts.beam_radius*opts.beam_radius
+    parkes_beam_area = np.pi*parkes_beam_radius*parkes_beam_radius
 
     #Incoherent beam radius
     incoherent_circle = Circle((boresight_ra_deg,boresight_dec_deg), incoherent_beam_radius, color='green',linestyle='--',linewidth=2.5,fill=False,label='Incoherent beam')
@@ -609,9 +605,9 @@ if __name__ =="__main__":
     parser.add_option('--fits_file',type=str, help='Full path for Fermi fits file (Defaults to Fermi fits file in current working directory)',dest='fits_file',default=None)
     parser.add_option('--known_pulsar',type=str, help='Cross match with known pulsar list as specified. Options: ATNF, PSS',dest='kp_catalogue',default='PSS')
     parser.add_option('--user_coordinate',type=str, help=' Plot user specified coordinates  e.g. 12:08 -59:36',dest='user_coords',default=None)
-    parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees (Defaults to survey beam radius for MGPS-L)',dest='beam_radius', default=survey_beam_radius)
+    parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees (Defaults to survey beam radius for MMGPS-S)',dest='beam_radius', default=0.14425)
     parser.add_option('--username',type=str, help='Username of person running (Defaults to username of local machine)',dest='username', default=getpass.getuser())
-    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. TRAPUM-Fermi, MGPS-L) ; Default is MGPS-L', dest='survey_name',default='MGPS-L')
+    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. MMGPS-S, MGPS-UHF) ; Default is MMGPS-S', dest='survey_name',default='MMGPS-S')
     parser.add_option('--output_path',type=str, help='Path to store output files (Defaults to current working directory)',dest='output_path', default=os.getcwd())
     parser.add_option('--psrcat_path',type=str, help='Path to local version of PSRCAT database. Will be used when system is offline', dest='psrcat_path', default=None)
     parser.add_option('--unpublished_path',type=str, help='Path to local version of HTRU unpublished csv. Will be used when system is offline', dest='htru_unpublished_path')

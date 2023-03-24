@@ -40,6 +40,11 @@ More features and suggestions are welcome!
 meerkat = EarthLocation(lat=-30.713*u.deg, lon=21.4*u.deg)
 
 
+# Survey beam radii for different sub-surveys
+MMGPS_survey_beam_radii = {"MMGPS-L": 0.2488360131953144,
+                           "MMGPS-S": 0.14425,
+                           "MMGPS-UHF": 'unset'}
+
 
 ########### Matplotlib settings ##############################
 plt.rc('axes', labelsize=12)    # fontsize of the x and y labels
@@ -624,6 +629,9 @@ if __name__ =="__main__":
     if not isinstance (opts.fits_file, type(None)):
         opts.meta = os.path.expanduser(opts.meta) 
 
+
+    # Set beam radius according to survey name chosen
+    opts.beam_radius = MMGPS_survey_beam_radii[opts.survey_name] 
 
     # Generate all info for pointing
     generate_info_from_meta(opts)

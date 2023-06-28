@@ -8,7 +8,7 @@ import termios
 import struct
 import argparse
 
-SERVER = "portal.mpifr-bonn.mpg.de"
+SERVER = "portal2.mpifr-bonn.mpg.de"
 
 
 def terminal_size():
@@ -29,7 +29,7 @@ def progress(transferred, total):
 def copy_tarballs(user, localpath, basepath, tarballs):
     ssh = paramiko.SSHClient()
     ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
-    ssh.connect("portal.mpifr-bonn.mpg.de",
+    ssh.connect("portal2.mpifr-bonn.mpg.de",
         username=user,
         password=getpass.getpass(prompt="Password: "))
     sftp = ssh.open_sftp()

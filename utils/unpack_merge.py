@@ -29,7 +29,7 @@ def progress(transferred, total):
 def copy_tarballs(user, localpath, basepath, tarballs):
     ssh = paramiko.SSHClient()
     ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
-    ssh.connect("portal.mpifr-bonn.mpg.de",
+    ssh.connect(SERVER,
         username=user,
         password=getpass.getpass(prompt="Password: "))
     sftp = ssh.open_sftp()
@@ -42,6 +42,15 @@ def copy_tarballs(user, localpath, basepath, tarballs):
     sftp.close()
     ssh.close()
 
+def is_nonempty_tar_file(archive):
+    with tarfile.open(archive, "r") as tar:
+        try:
+            file_content = tar.getmembers()
+            return len(file_content) > 0
+        except Exception as exc:
+            print(f"Reading tarfile failed for {archive}")
+
+
 
 def unpack_merge(localpath, tarballs):
     merged_cands_filename =os.path.join(localpath, "merged_candidates.csv")
@@ -50,6 +59,7 @@ def unpack_merge(localpath, tarballs):
     has_header = False
 
     for tarball in tarballs:
+        print(tarball)
         f = tarfile.open(os.path.join(localpath, tarball), "r:gz")
         candfile = f.extractfile("candidates.csv")
         if not has_header:
@@ -71,8 +81,11 @@ def main():
     parser.add_argument("-r", "--remotepath", type=str, dest="remotepath", help="Remote path where tarballs are located")
     parser.add_argument("-l", "--localpath", type=str, dest="localpath", help="Localpath where tarballs should be unpacked and merged", default="./")
     parser.add_argument("-t", "--tarballs", type=str, dest="tarballs", nargs="+", help="List of tarballs to retrieve and extract")
+    parser.add_argument("-s", "--skip_dload",  type=int, dest="skip_dload_flag", help="Skip download if tarballs are already downloaded (Default=0)", default=0)
     args = parser.parse_args()
-    copy_tarballs(args.user, args.localpath, args.remotepath, args.tarballs)
+
+    if not args.skip_dload_flag:
+        copy_tarballs(args.user, args.localpath, args.remotepath, args.tarballs)
     unpack_merge(args.localpath, args.tarballs)
 
 

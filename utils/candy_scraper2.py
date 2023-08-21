@@ -3,6 +3,7 @@ import path
 import sys
 import glob
 import shutil
+import subprocess
 import tarfile
 import optparse
 import logging
@@ -90,40 +91,52 @@ def write_t1_t2_beams(opts):
 
     if len(classified_files) != len(all_candidate_csvs):
         raise Exception("The total number of files with input tag does not match the total candidate.csv files! Please check for multiple redundant files")
+
+    # If this expection is not raised, I assume that there is just one candidates.csv file and a corresponding classified file
+    classified_file = classified_files[0]
+    candidate_csv = all_candidate_csvs[0]
+
+
+    # Check if all candidates have been classified
+    if (pd.read_csv(classified_file).shape[0] != pd.read_csv(candidate_csv).shape[0]):
+        log.warning("The number of entries in the classification file is not equal to the number of entries in the candidates.csv. All candidates were not classified!")
     
-    for i,classified_file in enumerate(classified_files):
+    
+    #for i,classified_file in enumerate(classified_files):
         #print (i, classified_file)
-        log.info('Checking {}'.format(os.path.dirname(classified_file)))
-        df = pd.read_csv(classified_file)
-        t1_t2_df =  (df[(df['classification']=='T1_CAND') | (df['classification']=='T2_CAND')])
+    log.info('Checking {}'.format(os.path.dirname(classified_file)))
+    df = pd.read_csv(classified_file)
+    t1_t2_df =  (df[(df['classification']=='T1_CAND') | (df['classification']=='T2_CAND')])
         
-        if t1_t2_df.empty:
-            log.info('No T1/T2 files in {}'.format(os.path.dirname(classified_file)))
-            continue         
-        else:
-            candidate_meta_df = pd.read_csv(all_candidate_csvs[i])
-            t1_t2_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_t2_df['png'])][['filterbank_path']].reset_index(drop=True)
-            t1_t2_beams_df['filterbank_path'] = t1_t2_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
-             
-            t1_t2_beams_df = t1_t2_beams_df.assign(username = opts.username)
-            
-            t1_t2_beams_df['reason'] = t1_t2_df[t1_t2_df['png'].isin(candidate_meta_df['png_path'])]['classification'].to_list()
-            t1_t2_beams_df['reason'] = opts.survey_name + ' ' + t1_t2_beams_df['reason'].astype(str) 
+    if t1_t2_df.empty:
+        log.info('No T1/T2 files in {}. Returning empty T1/T2 list'.format(os.path.dirname(classified_file)))         
+        return t1_t2_all
 
-            log.info("Number of T1/T2 cands found: {}".format(t1_t2_beams_df.drop_duplicates().shape[0]))
+    else:
+        candidate_meta_df = pd.read_csv(candidate_csv)
+        t1_t2_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_t2_df['png'])][['filterbank_path', 'png_path']].reset_index(drop=True)
+        log.info("Number of T1/T2 cands found: {}".format(t1_t2_beams_df.drop_duplicates().shape[0]))
+        t1_t2_beams_df['filterbank_path'] = t1_t2_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))             
+        t1_t2_beams_df = t1_t2_beams_df.assign(username = opts.username)    
+        t1_t2_beams_df_renamed = t1_t2_beams_df.rename({'png_path':'png'}, axis=1)
+        merged_df = pd.merge(t1_t2_beams_df_renamed, t1_t2_df, on='png')
+        merged_df = merged_df.assign(reason = opts.survey_name + ' ' + merged_df['classification'])
+        t1_t2_all = pd.concat([t1_t2_all, merged_df[['filterbank_path', 'username', 'reason']]], ignore_index=True) 
 
-            # Add neighbour beams by default if candidate is T1
-            if opts.keep_neighbours == 1: 
-                if t1_t2_df['classification'].str.contains('T1_CAND').sum():
-                    log.info("T1 candidate(s) found. Neighbouring beams will be added by default")     
-                    t1_df = df[df['classification']=='T1_CAND'] 
-                    t1_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_df['png'])][['filterbank_path','beam_name', 'metafile_path']]   
-                    t1_beams_df['filterbank_path'] = t1_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
-                    t1_neighbour_set_df = get_neighbour_beams(opts, t1_beams_df)
-                    t1_t2_beams_df = t1_t2_beams_df.append(t1_neighbour_set_df, ignore_index=True)     
-                else:
-                    log.info("No T1 candidates to search neighbours")
-            t1_t2_all = t1_t2_all.append(t1_t2_beams_df, ignore_index=True)
+
+
+        # Add neighbour beams by default if candidate is T1
+        if opts.keep_neighbours == 1: 
+            if t1_t2_df['classification'].str.contains('T1_CAND').sum():
+                log.info("T1 candidate(s) found. Neighbouring beams will be added by default")     
+                t1_df = df[df['classification']=='T1_CAND'] 
+                t1_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_df['png'])][['filterbank_path','beam_name', 'metafile_path']]  
+                t1_beams_df['filterbank_path'] = t1_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
+                t1_neighbour_set_df = get_neighbour_beams(opts, t1_beams_df)
+                t1_t2_all = pd.concat([t1_t2_all, t1_neighbour_set_df], ignore_index=True) 
+            else:
+                log.info("No T1 candidates to search neighbours")
+
 
     return t1_t2_all 
 
@@ -162,7 +175,8 @@ def write_known_pulsar_beams(opts):
             kp_beams_df['reason'] = opts.survey_name + ' ' + kp_beams_df['reason'].astype(str) 
 
             log.info("Number of known pulsar cands found: {}".format(kp_beams_df.drop_duplicates().shape[0]))
-            kp_all = kp_all.append(kp_beams_df, ignore_index=True)
+            #kp_all = kp_all.append(kp_beams_df, ignore_index=True)
+            kp_all = pd.concat([kp_all, kp_beams_df], ignore_index=True)
 
 
     return kp_all 
@@ -229,8 +243,10 @@ def write_out_second_revision_tar_file(opts):
                 shutil.copyfile(os.path.dirname(classified_file)+'/'+val,                                
                                 opts.output_dir+'/{}_{}_round1/plots/{}'.format(os.path.basename(os.path.normpath(opts.main_dir)), opts.tag,                                                 os.path.basename(val)))
             
-            t1_t2_all_classified_df = t1_t2_all_classified_df.append(t1_t2_classified_df, ignore_index=True)            
-            t1_t2_all_meta_df = t1_t2_all_meta_df.append(t1_t2_meta_df, ignore_index=True)
+            #t1_t2_all_classified_df = t1_t2_all_classified_df.append(t1_t2_classified_df, ignore_index=True)            
+            t1_t2_all_classified_df = pd.concat([t1_t2_all_classified_df, t1_t2_classified_df], ignore_index=True)            
+            #t1_t2_all_meta_df = t1_t2_all_meta_df.append(t1_t2_meta_df, ignore_index=True)
+            t1_t2_all_meta_df = pd.concat([t1_t2_all_meta_df, t1_t2_meta_df], ignore_index=True)
           
     # Write out candidates.csv and first classification csv file
     log.info("Writing out candidates.csv file in {}".format(second_round_path))
@@ -292,7 +308,8 @@ if __name__ == "__main__":
         kp_df.drop_duplicates().to_csv('{}/{}_{}_keep_pulsar_cands.csv'.format(opts.output_dir, os.path.basename(os.path.normpath(opts.main_dir)), opts.tag), index = False)
 
     # Write out a csv file for beams to be retained
-    all_beams_df = t1_t2_df.append(kp_df, ignore_index=True)
+    #all_beams_df = t1_t2_df.append(kp_df, ignore_index=True)
+    all_beams_df = pd.concat([t1_t2_df,kp_df], ignore_index=True)
     log.info("Writing out beams for all known pulsar and T1/T2 cands (Total: {}) found in {}".format(all_beams_df.drop_duplicates().shape[0], opts.main_dir))
     all_beams_df.drop_duplicates().to_csv('{}/{}_{}_keep_beams.csv'.format(opts.output_dir, os.path.basename(os.path.normpath(opts.main_dir)), opts.tag), index = False)
   

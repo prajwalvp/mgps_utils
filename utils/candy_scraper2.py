@@ -1,5 +1,4 @@
 import os
-import path
 import sys
 import glob
 import shutil
@@ -17,7 +16,6 @@ import getpass
 """
 Updated version of candy_scraper.py which writes out beam lists with columns: filterbank_path, username, reason
 """
-
 
 log = logging.getLogger('candy_scraper2')
 FORMAT = "[%(levelname)s - %(asctime)s - %(filename)s:%(lineno)s] %(message)s"

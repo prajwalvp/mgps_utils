@@ -96,7 +96,9 @@ def write_t1_t2_beams(opts):
 
 
     # Check if all candidates have been classified
-    if (pd.read_csv(classified_file).shape[0] != pd.read_csv(candidate_csv).shape[0]):
+    if (pd.read_csv(classified_file).shape[0] > pd.read_csv(candidate_csv).shape[0]):
+        log.warning("The number of entries in the classification file is not equal to the number of entries in the candidates.csv. You have classified the candidates multiple times!")
+    else:
         log.warning("The number of entries in the classification file is not equal to the number of entries in the candidates.csv. All candidates were not classified!")
     
     

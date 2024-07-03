@@ -1,0 +1,13 @@
+1. To query paths of data products corresponding to a certain pulsar name, run the following query
+
+select distinct filepath from data_product join pointing on data_product.pointing_id=pointing.id join target on pointing.target_id=target.id where source_name="JXXXX-XXXX"
+
+
+
+2. To query the XML files corresponding to a beam name, source name and processing_request_id
+
+Here is an example:
+
+select distinct filename,filepath from (select filename, filepath, pointing_id, beam_id from data_product join processing on data_product.processing_id=processing.id join processing_request_processings on processing.id=processing_request_processings.processing_id where processing_request_id=1946) t1 inner join (select beam_id from data_product join beam on data_product.beam_id=beam.id where name='cfbf00002') t2 on t1.beam_id=t2.beam_id where pointing_id in (select distinct pointing_id from data_product join pointing on data_product.pointing_id=pointing.id join target on pointing.target_id=target.id where source_name="J1820.6-0326")
+
+

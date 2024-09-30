@@ -43,7 +43,7 @@ meerkat = EarthLocation(lat=-30.713*u.deg, lon=21.4*u.deg)
 # Survey beam radii for different sub-surveys
 MMGPS_survey_beam_radii = {"MMGPS-L": 0.2488360131953144,
                            "MMGPS-S": 0.14425,
-                           "MMGPS-UHF": 'unset'}
+                           "MMGPS-U": 0.42536}
 
 
 ########### Matplotlib settings ##############################
@@ -612,7 +612,7 @@ if __name__ =="__main__":
     parser.add_option('--user_coordinate',type=str, help=' Plot user specified coordinates  e.g. 12:08 -59:36',dest='user_coords',default=None)
     parser.add_option('--user_beam_radius',type=float, help='Plot user specified beam radius in degrees (Defaults to survey beam radius for MMGPS-S)',dest='beam_radius', default=0.14425)
     parser.add_option('--username',type=str, help='Username of person running (Defaults to username of local machine)',dest='username', default=getpass.getuser())
-    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. MMGPS-S, MGPS-UHF) ; Default is MMGPS-S', dest='survey_name',default='MMGPS-S')
+    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. MMGPS-S, MMGPS-U) ; Default is MMGPS-S', dest='survey_name',default='MMGPS-S')
     parser.add_option('--output_path',type=str, help='Path to store output files (Defaults to current working directory)',dest='output_path', default=os.getcwd())
     parser.add_option('--psrcat_path',type=str, help='Path to local version of PSRCAT database. Will be used when system is offline', dest='psrcat_path', default=None)
     parser.add_option('--unpublished_path',type=str, help='Path to local version of HTRU unpublished csv. Will be used when system is offline', dest='htru_unpublished_path')

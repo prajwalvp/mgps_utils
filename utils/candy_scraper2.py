@@ -265,7 +265,7 @@ if __name__ == "__main__":
     parser = optparse.OptionParser()
     parser.add_option('--name_tag', type=str, help = 'Name tag for searching classified files', dest='tag', default='autosave')
     parser.add_option('--username', type=str, help = 'MGPS/TRAPUM login username; Default is local machine username', dest='username', default=getpass.getuser())
-    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. MMGPS-S, MMGPS-UHF) ; Default is MMGPS-S', dest='survey_name',default='MMGPS-S')
+    parser.add_option('--survey_name', type=str, help = 'Survey name (e.g. MMGPS-S, MMGPS-U) ; Default is MMGPS-S', dest='survey_name',default='MMGPS-S')
     parser.add_option('--main_dir', type=str, help='Root directory where all pointing subdirectories are stored', dest='main_dir')
     parser.add_option('--output_dir',type=str, help='Output directory where csvs/tar files will be written out (Default is same as root directory specified)', dest='output_dir')
     parser.add_option('--separate_csvs',type=int, help='Flag for writing out separate csvs for T1/T2 and pulsars (Default:0)', dest='sep_csv',default=0)

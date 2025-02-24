@@ -83,7 +83,7 @@ def write_t1_t2_beams(opts):
     t1_t2_all = pd.DataFrame(columns=columns)
 
     #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c if 'full' not in c]
     #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
     all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir))
 
@@ -149,7 +149,7 @@ def write_known_pulsar_beams(opts):
     kp_all = pd.DataFrame(columns=columns)
 
     #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c if 'full' not in c]
     #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir))
     all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir))
 
@@ -216,7 +216,7 @@ def write_out_second_revision_tar_file(opts):
 
     # Transfer all necessary  T1/T2 plots + metafiles
     #classified_files =  [c for c in glob.glob("{}/**/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c]
-    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c]
+    classified_files =  [c for c in glob.glob("{}/*{}*.csv".format(opts.main_dir, opts.tag)) if 'autosave' not in c if 'keep' not in c if 'full' not in c]
     #all_candidate_csvs = glob.glob("{}/**/candidates.csv".format(opts.main_dir)) 
     all_candidate_csvs = glob.glob("{}/candidates.csv".format(opts.main_dir)) 
 

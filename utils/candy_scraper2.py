@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import math
 import shutil
 import subprocess
 import tarfile
@@ -56,22 +57,112 @@ def get_coherent_beam_coords(meta):
 
     return beam_coords
 
+
+def calculate_ellipse_coefficients(angle, x_sigma, y_sigma):
+    """
+    Calculate the coefficients (a, b, c) for the quadratic form of an ellipse.
+
+    Args:
+        angle (float): The orientation of the ellipse in radians.
+        x_sigma (float): The semi-major axis of the ellipse in radians.
+        y_sigma (float): The semi-minor axis of the ellipse in radians.
+
+    Returns:
+        tuple: Coefficients (a, b, c) for the quadratic form.
+    """
+    cos_angle = math.cos(angle)
+    sin_angle = math.sin(angle)
+    x_sigma_sq = x_sigma * x_sigma
+    y_sigma_sq = y_sigma * y_sigma
+
+    a = (cos_angle * cos_angle) / (2 * x_sigma_sq) + (sin_angle * sin_angle) / (2 * y_sigma_sq)
+    b = (-math.sin(2 * angle)) / (4 * x_sigma_sq) + (math.sin(2 * angle)) / (4 * y_sigma_sq)
+    c = (sin_angle * sin_angle) / (2 * x_sigma_sq) + (cos_angle * cos_angle) / (2 * y_sigma_sq)
+
+    return a, b, c
+
+
+def get_beam_intersection(b1_coords, b2_coords, angle, x_sigma, y_sigma):
+    """
+    Calculate the intersection value between two beams (b1 and b2).
+
+    Args:
+        b1_coords (SkyCoord): Coordinates of the first beam in radians.
+        b2_coords (SkyCoord): Coordinates of the second beam in radians.
+        angle (float): The orientation of the ellipse in radians.
+        x_sigma (float): The semi-major axis of the ellipse in radians.
+        y_sigma (float): The semi-minor axis of the ellipse in radians.
+
+    Returns:
+        float: The intersection value between the two beams.
+    """
+    # Convert coordinates to radians
+    x_mean = b1_coords.ra.radian
+    y_mean = b1_coords.dec.radian
+    x = b2_coords.ra.radian
+    y = b2_coords.dec.radian
+
+    # Calculate coefficients
+    a, b, c = calculate_ellipse_coefficients(angle, x_sigma, y_sigma)
+
+    # Compute the quadratic form
+    dx = x - x_mean
+    dy = y - y_mean
+    d = a * dx * dx + 2 * b * dx * dy + c * dy * dy
+
+    # Safeguard against overflow
+    if d > 700:  # exp(700) is approximately 1e304, close to the limit for 64-bit floats
+        return 0.0  # Return 0 for very large d (beams are effectively non-overlapping)
+    else:
+        return math.exp(d)
+
+
 def get_neighbour_beams(opts, df):
     """
-    Select upto 6 neighbouring beams w.r.t. reference beam    
+    Select up to 6 neighboring beams w.r.t. reference beam based on the intersection value.
     """ 
-    columns = ['filterbank_path','username','reason']
+    columns = ['filterbank_path', 'username', 'reason']
     neighbour_set = pd.DataFrame(columns=columns)
-    for i,row in df.iterrows():
-        meta_file = opts.main_dir + '/' + row['metafile_path'] 
+
+    for i, row in df.iterrows():
+        meta_file = opts.main_dir + '/' + row['metafile_path']
         coherent_beam_coords = get_coherent_beam_coords(meta_file)
-        ref_coords = coherent_beam_coords[int(row['beam_name'].strip('cfbf'))] 
-        all_seps = ref_coords.separation(coherent_beam_coords)
-        all_beams_sorted = np.argsort(all_seps)
-        neighbour_beam_list = all_beams_sorted[1:min(7, len(all_beams_sorted))]
-        for i, beam_num in enumerate(neighbour_beam_list):
-            filterbank_path = os.path.dirname(row['filterbank_path'])+ '/' + 'cfbf00{:03d}'.format(int(beam_num)) 
-            neighbour_set.loc[i] = [filterbank_path, opts.username, opts.survey_name + ' T1_CAND n'] 
+        ref_coords = coherent_beam_coords[int(row['beam_name'].strip('cfbf'))]
+
+        # Extract ellipse configuration (angle, x_sigma, y_sigma) from the meta file
+        with open(meta_file, 'r') as f:
+            meta_data = literal_eval(f.read())
+        beam_shape = literal_eval(meta_data['beamshape'])
+        angle = np.radians(beam_shape['angle']) - np.pi  # Convert angle to radians
+        x_sigma = beam_shape['x']   
+        y_sigma = beam_shape['y']
+
+        # Step 1: Track original indices
+        original_indices = list(range(len(coherent_beam_coords)))
+
+        # Step 2: Exclude the reference beam
+        filtered_beam_coords = []
+        filtered_indices = []
+        for i, beam_coord in enumerate(coherent_beam_coords):
+            if beam_coord != ref_coords:
+                filtered_beam_coords.append(beam_coord)
+                filtered_indices.append(original_indices[i])
+
+        # Step 3: Calculate intersection values
+        intersection_values = []
+        for beam_coord in filtered_beam_coords:
+            intersection_value = get_beam_intersection(ref_coords, beam_coord, angle, x_sigma, y_sigma)
+            intersection_values.append(intersection_value)
+
+        # Step 4: Sort beams by intersection value and select the closest ones
+        sorted_indices = np.argsort(intersection_values)
+        neighbour_beam_list = [filtered_indices[i] for i in sorted_indices[:6]]  # Select the 6 closest beams
+
+
+        # Add neighboring beams to the DataFrame
+        for beam_num in neighbour_beam_list:
+            filterbank_path = os.path.dirname(row['filterbank_path']) + '/' + 'cfbf00{:03d}'.format(int(beam_num))
+            neighbour_set.loc[len(neighbour_set)] = [filterbank_path, opts.username, opts.survey_name + ' T1_CAND n']
 
     return neighbour_set
 
@@ -132,6 +223,7 @@ def write_t1_t2_beams(opts):
                 t1_df = df[df['classification']=='T1_CAND'] 
                 t1_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_df['png'])][['filterbank_path','beam_name', 'metafile_path']]  
                 t1_beams_df['filterbank_path'] = t1_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
+                t1_beams_df.to_csv('t1_beams')
                 t1_neighbour_set_df = get_neighbour_beams(opts, t1_beams_df)
                 t1_t2_all = pd.concat([t1_t2_all, t1_neighbour_set_df], ignore_index=True) 
             else:

@@ -3,6 +3,7 @@ import os
 import sys
 import math
 import glob
+import json
 import getpass
 import logging
 import subprocess
@@ -11,7 +12,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, Circle
 import pandas as pd
-from ast import literal_eval
 from psrqpy import QueryATNF
 import astropy.units as u
 from astropy import wcs
@@ -104,8 +104,7 @@ def get_coherent_beam_coords(meta):
     Return beam coordinates for all coherent beams
     """
     with open(meta, 'r') as f:
-        data = f.read()
-    all_info = literal_eval(data)
+        all_info = json.load(f)
 
     # Get all key value pairs for beams and sort them based on beam number
     vals = list(all_info['beams'].values())
@@ -285,8 +284,7 @@ def write_keep_beams_csv(opts, best_beams, best_psrs):
     Write out a file with paths to filterbanks to be retained where known pulsars are expected 
     """
     with open(opts.meta, 'r') as f:
-        data = f.read()
-    all_info = literal_eval(data)
+        all_info = json.load(f)
 
     filterbank_path = all_info['output_dir']
     columns = ['filterbank_path', 'username', 'reason']
@@ -313,8 +311,7 @@ def generate_info_from_meta(opts):
     Main function where all the info is generated from a meta file
     """
     with open(opts.meta, 'r') as f:
-        data = f.read()
-    all_info = literal_eval(data)
+        all_info = json.load(f)
 
     # Initialise the plot
     plt.clf()
@@ -332,7 +329,7 @@ def generate_info_from_meta(opts):
     meta_output_path = all_info['output_dir']
 
     # Beamshape parameters
-    beam_shape = literal_eval(all_info['beamshape'])
+    beam_shape = json.loads(all_info['beamshape'])
     # Convert angle to radians
     angle = np.radians(float(beam_shape['angle'])) - np.pi
     x_sigma = beam_shape['x']
@@ -368,13 +365,13 @@ def generate_info_from_meta(opts):
     coherent_beam_coords = get_coherent_beam_coords(opts.meta)
 
     # Beam shapes
-    beam_width = 2.0*float(literal_eval(all_info['beamshape'])['x'])
-    beam_height = 2.0*float(literal_eval(all_info['beamshape'])['y'])
+    beam_width = 2.0*float(json.loads(all_info['beamshape'])['x'])
+    beam_height = 2.0*float(json.loads(all_info['beamshape'])['y'])
     if utc_time < Time('2021-10-05T00:00:00'):
-        beam_angle = float(literal_eval(all_info['beamshape'])['angle'])
+        beam_angle = float(json.loads(all_info['beamshape'])['angle'])
     else:
         # Sign change in FBFUSE tiling rollout
-        beam_angle = -1.0*float(literal_eval(all_info['beamshape'])['angle'])
+        beam_angle = -1.0*float(json.loads(all_info['beamshape'])['angle'])
 
     # Get all key value pairs for beams and sort them based on beam number
     vals = list(all_info['beams'].values())
@@ -417,13 +414,6 @@ def generate_info_from_meta(opts):
                     "{} expected within the survey beam region".format(psr[0]))
                 pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(
                     coherent_beam_coords, boresight_coords, time)
-                # psr_idx, psr_d2d, psr_d3d = psr_coords.match_to_catalog_sky(coherent_beam_coords)
-
-                # Calculate neighbouring beams based on boresight separation
-
-                # all_seps = psr_coords.separation(coherent_beam_coords)
-                # all_beams_sorted = np.argsort(all_seps)
-                # neighbour_beam_list = ";".join(map(str,list(all_beams_sorted[1:min(7, len(all_beams_sorted))])))  # Sort by just position
 
                 # Sort beams by sensitivity fraction by modelling the beam as a 2D Gaussian
                 pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(
@@ -455,9 +445,6 @@ def generate_info_from_meta(opts):
                 neighbour_beam_list = ";".join(map(str, list(
                     all_beams_sorted[1:min(7, len(all_beams_sorted))])))  # Sort by just position
 
-                # neighbour_beam_list = ";".join(map(str,list(all_beams_sorted[1:min(5, len(all_beams_sorted))])))
-
-                # Check that all beams are actually neighbouring beams
 
             else:
                 best_beam = 'Outside survey beam'
@@ -512,12 +499,6 @@ def generate_info_from_meta(opts):
                         "{} expected within the survey beam region".format(psr['PSR']))
                     pixel_beam_ras, pixel_beam_decs = get_pixel_coherent_beam_coordinates(
                         coherent_beam_coords, boresight_coords, time)
-                    # psr_idx, psr_d2d, psr_d3d = psr_coords.match_to_catalog_sky(coherent_beam_coords)
-
-                    # Neighbouring beams within 2 beamwidths
-                    # all_seps = psr_coords.separation(coherent_beam_coords)
-                    # all_beams_sorted = np.argsort(all_seps)
-                    # neighbour_beam_list = ";".join(map(str,list(all_beams_sorted[1:min(7, len(all_beams_sorted))])))
 
                     G_values = []
                     for i, pixel_ra in enumerate(pixel_beam_ras):

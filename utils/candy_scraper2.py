@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+import json
 import math
 import shutil
 import subprocess
@@ -9,7 +10,6 @@ import optparse
 import logging
 import numpy as np
 import pandas as pd
-from ast import literal_eval
 from astropy.coordinates import SkyCoord
 import astropy.units as u 
 import getpass
@@ -33,8 +33,7 @@ def get_coherent_beam_coords(meta):
     Return beam coordinates for all coherent beams
     """
     with open(meta,'r') as f:
-        data = f.read()
-    all_info = literal_eval(data)
+        all_info = json.load(f)
 
     # Get all key value pairs for beams and sort them based on beam number
     vals = list(all_info['beams'].values())
@@ -131,8 +130,8 @@ def get_neighbour_beams(opts, df):
 
         # Extract ellipse configuration (angle, x_sigma, y_sigma) from the meta file
         with open(meta_file, 'r') as f:
-            meta_data = literal_eval(f.read())
-        beam_shape = literal_eval(meta_data['beamshape'])
+            meta_data = json.load(f)
+        beam_shape = json.loads(meta_data['beamshape'])
         angle = np.radians(beam_shape['angle']) - np.pi  # Convert angle to radians
         x_sigma = beam_shape['x']   
         y_sigma = beam_shape['y']
@@ -223,7 +222,6 @@ def write_t1_t2_beams(opts):
                 t1_df = df[df['classification']=='T1_CAND'] 
                 t1_beams_df = candidate_meta_df[candidate_meta_df['png_path'].isin(t1_df['png'])][['filterbank_path','beam_name', 'metafile_path']]  
                 t1_beams_df['filterbank_path'] = t1_beams_df['filterbank_path'].apply(lambda x:x.replace(x,os.path.dirname(x)))
-                t1_beams_df.to_csv('t1_beams')
                 t1_neighbour_set_df = get_neighbour_beams(opts, t1_beams_df)
                 t1_t2_all = pd.concat([t1_t2_all, t1_neighbour_set_df], ignore_index=True) 
             else:
